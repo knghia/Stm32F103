@@ -1,0 +1,26 @@
+--cpu Cortex-M3
+"can_bus_tx\startup_stm32f103xb.o"
+"can_bus_tx\main.o"
+"can_bus_tx\stm32f1xx_it.o"
+"can_bus_tx\stm32f1xx_hal_msp.o"
+"can_bus_tx\stm32f1xx_hal_timebase_tim.o"
+"can_bus_tx\stm32f1xx_hal_gpio_ex.o"
+"can_bus_tx\stm32f1xx_hal_can.o"
+"can_bus_tx\stm32f1xx_hal.o"
+"can_bus_tx\stm32f1xx_hal_rcc.o"
+"can_bus_tx\stm32f1xx_hal_rcc_ex.o"
+"can_bus_tx\stm32f1xx_hal_gpio.o"
+"can_bus_tx\stm32f1xx_hal_dma.o"
+"can_bus_tx\stm32f1xx_hal_cortex.o"
+"can_bus_tx\stm32f1xx_hal_pwr.o"
+"can_bus_tx\stm32f1xx_hal_flash.o"
+"can_bus_tx\stm32f1xx_hal_flash_ex.o"
+"can_bus_tx\stm32f1xx_hal_exti.o"
+"can_bus_tx\stm32f1xx_hal_tim.o"
+"can_bus_tx\stm32f1xx_hal_tim_ex.o"
+"can_bus_tx\system_stm32f1xx.o"
+"can_bus_tx\use.o"
+--strict --scatter "CAN_BUS_TX\CAN_BUS_TX.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "CAN_BUS_TX.map" -o CAN_BUS_TX\CAN_BUS_TX.axf

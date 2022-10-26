@@ -1,0 +1,11 @@
+# STM32F103
+
+![image info](./Image/as5048_pwm.0.png)
+
+![image info](./Image/pinmap.png)
+
+![image info](./Image/clock.png)
+
+[Pin map](https://stm32-base.org/boards/STM32F103C8T6-STM32-Smart-V2.0.html)
+
+[Data sheet](https://www.keil.com/dd/docs/datashts/st/stm32f10xxx.pdf)
