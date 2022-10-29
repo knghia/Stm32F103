@@ -8,7 +8,18 @@
 
 ![image info](./Image/config.png)
 
-## Code setup
+
+## Setup board
+
+![image info](./Image/tim2.png)
+
+Using the timer 1 which create pulse for time 2. Conncect the PC13 to PA0
+
+```sh
+	PC13 (Led) - PA0
+```
+
+## Setup code
 
 ```c
 void tim_2_init(void){
@@ -42,8 +53,5 @@ void tim_2_init(void){
 ## Result
 
 ![image info](./Image/result.png)
-
-
-![image info](./Image/tim2.png)
 
 </span>
