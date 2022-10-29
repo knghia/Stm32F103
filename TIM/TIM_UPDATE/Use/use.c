@@ -8,17 +8,17 @@ void gpio_init(void){
 }
 
 void tim_2_init(void){
-	// 0. Enable cleck tim 2 
+	/* 0. Enable cleck tim 2 */
 	RCC->APB1ENR |= (1<<0);
 	TIM2->CNT = 0;
 	TIM2->PSC = 360-1;
 	TIM2->ARR = 50000-1;
-	// 1. Enable UDIS tim 2
+	/* 1. Enable UDIS tim 2 */
 	TIM2->CR1 &=~	(1<<1);
-	// 2. Update interrupt enable
+	/* 2. Update interrupt enable */
+	TIM2->SR = 0;
+	/* 3. Update interrupt enable */
 	TIM2->DIER |= (1<<0);
-	// Enable time 1
-	TIM2->CR1 |= (1<<0);
 	/* 
 		NVIC TIM 2 update : 28
 		28/4 = 7
@@ -31,6 +31,8 @@ void tim_2_init(void){
 		28-31*0= 28
 	*/
 	NVIC->ISER[0] = (1<<28);
+	/* 4. Enable time 1 */
+	TIM2->CR1 |= (1<<0);
 }
 
 #define LED_TOGGLE() {GPIOC->ODR ^= (1<<13);}
