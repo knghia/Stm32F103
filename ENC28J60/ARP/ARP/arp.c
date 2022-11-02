@@ -1,33 +1,16 @@
 #include <stdio.h>
 #include <string.h>
-
 #include "crc.h"
 #include "arp.h"
 #include "enc28j60.h"
 #include "enc28j60_config.h"
 
-bool compare_array(uint8_t* a,const uint8_t* b, uint8_t len){
-	uint8_t i = 0;
-	for (i=0;i<len;i++){
-		if(a[i] != b[i]){
-			return false;
-		}
-	}
-	return true;
-}
-
-uint16_t swap16(uint16_t data){
-	uint8_t h = (data>>8);
-	uint8_t l = data%256;
-	return ((l<<8) + h);
-}
+volatile uint8_t _ARP_MAC_SOURCE[6];
+volatile uint8_t _ARP_IP_SOURCE[4];
 
 void arp_send_packet(uint8_t* package, uint16_t len){
-	enc28j60_send_packet(package, ARP_PACKET_LEN);
+	enc28j60_load_packet(package, ARP_PACKET_LEN);
 }
-
-const uint8_t _ARP_MAC_SOURCE[6] = {0x08,0x10,0x19,0x97,0x25,0x25};
-const uint8_t _ARP_IP_SOURCE[4] = {192,168,137,100};
 
 extern bool arp_receiver_package(uint8_t* mac){
 	static Enc28j60Frame arp_data;
@@ -77,16 +60,20 @@ extern bool arp_receiver_package(uint8_t* mac){
 	return false;
 }
 
-extern bool arp_get_mac(uint8_t* mac_target,const uint8_t* ip_target){
+extern void arp_init(uint8_t* mac_source,uint8_t* ip_source){
+	copy_array(_ARP_MAC_SOURCE, mac_source);
+	copy_array(_ARP_IP_SOURCE, ip_source);
+	enc28j60_init(_ARP_MAC_SOURCE);
+}
+
+extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target){
 	uint16_t status;
 	int16_t timeout = 1000;
 	uint8_t mac_dest[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 	ARP_Struct arp_struct;
 	
-	enc28j60_init(_ARP_MAC_SOURCE);
-
-	memcpy(arp_struct.MAC_dest, mac_dest, 6);
-	memcpy(arp_struct.MAC_source, _ARP_MAC_SOURCE, 6);
+	copy_array(arp_struct.MAC_dest, mac_dest, 6);
+	copy_array(arp_struct.MAC_source, _ARP_MAC_SOURCE, 6);
 	
 	arp_struct.Ethernet_type = swap16(ARP_ETHERNET_TYPE);
 	arp_struct.Hardwave_type = swap16(ARP_HARDWAVE_TYPE);
@@ -94,10 +81,10 @@ extern bool arp_get_mac(uint8_t* mac_target,const uint8_t* ip_target){
 	arp_struct.Size = swap16(ARP_SIZE);
 	arp_struct.Opcode = swap16(ARP_OPCODE_REPLY);
 	
-	memcpy(arp_struct.MAC_sender, _ARP_MAC_SOURCE, 6);
-	memcpy(arp_struct.IP_sender, _ARP_IP_SOURCE, 4);
-	memcpy(arp_struct.MAC_target, mac_target, 6);
-	memcpy(arp_struct.IP_target, ip_target, 4);
+	copy_array(arp_struct.MAC_sender, _ARP_MAC_SOURCE, 6);
+	copy_array(arp_struct.IP_sender, _ARP_IP_SOURCE, 4);
+	copy_array(arp_struct.MAC_target, mac_target, 6);
+	copy_array(arp_struct.IP_target, ip_target, 4);
 
 	while(timeout--){
 		arp_send_packet((uint8_t *)&arp_struct, ARP_PACKET_LEN);

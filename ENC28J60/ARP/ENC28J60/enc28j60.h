@@ -228,9 +228,8 @@ extern void enc28j60_write_control_res(BANK bank,uint8_t address,uint8_t data);
 extern bool enc28j60_write_phy(uint8_t address,uint16_t data);
 extern uint16_t enc28j60_read_phy(uint8_t address);
 
-extern void enc28j60_write_buffs(uint8_t* data,uint16_t len);
+extern bool enc28j60_load_packet(uint8_t *data, uint16_t len);
 
-extern bool enc28j60_send_packet(uint8_t *data, uint16_t len);
 extern bool enc28j60_receive_packet(void);
 
 extern void enc28j60_poll(void);

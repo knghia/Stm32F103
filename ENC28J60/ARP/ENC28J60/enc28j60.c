@@ -166,7 +166,7 @@ extern uint16_t enc28j60_read_phy(uint8_t address){
 	/* 2.1 Set the MICMD.MIIRD bit */
 	enc28j60_write_control_res(BANK_2, MICMD, (1<<MIISCAN));
 	enc28j60_write_control_res(BANK_2, MICMD, (1<<MIISCAN)|(1<<MIIRD));
-	/* 2.2 Wait 10.24 µs. Read the MISTAT.BUSY bit */
+	/* 2.2 Wait 10.24 ï¿½s. Read the MISTAT.BUSY bit */
 	delay_ms(1);
 	do{
 		status_h = enc28j60_read_control_res(BANK_3, MISTAT);
@@ -220,14 +220,14 @@ extern bool enc28j60_write_phy(uint8_t address,uint16_t data){
 	return true;
 }
 
-extern void enc28j60_write_buffs(uint8_t* data,uint16_t len){
+void enc28j60_send_packet(uint8_t* data,uint16_t len){
 	uint16_t i = 0;
 	uint32_t crc = crc32(data, 42);
 	enc28j60_CS_low();
 	enc28j60_spi_write(0x7A);
 	enc28j60_spi_write(0x00);
 	for(i=0;i<len;i++){
-			enc28j60_spi_write(*data++);
+		enc28j60_spi_write(*data++);
 	}
 	enc28j60_spi_write((crc&0xFF000000)>>24);
 	enc28j60_spi_write((crc&0x00FF0000)>>16);
@@ -236,7 +236,7 @@ extern void enc28j60_write_buffs(uint8_t* data,uint16_t len){
 	enc28j60_CS_high();
 }
 
-extern bool enc28j60_send_packet(uint8_t *data, uint16_t len){
+extern bool enc28j60_load_packet(uint8_t *data, uint16_t len){
 	#ifdef ENC28J60_EBUG
 		printf("Send .....\r\n");
 	#endif
@@ -247,7 +247,7 @@ extern bool enc28j60_send_packet(uint8_t *data, uint16_t len){
 	enc28j60_write_control_res(BANK_0, ETXSTL, TX_START_ADD%256);
 	enc28j60_write_control_res(BANK_0, ETXSTH, TX_START_ADD>>8);
 	/* 2. Write data into buffer */
-	enc28j60_write_buffs(data, len);
+	enc28j60_send_packet(data, len);
 	/* 3. Appropriately program the ETXND Pointer */
 	enc28j60_write_control_res(BANK_0, ETXNDL, (TX_START_ADD+len)%256);
 	enc28j60_write_control_res(BANK_0, ETXNDH, (TX_START_ADD+len)>>8);
