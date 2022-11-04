@@ -27,7 +27,7 @@ extern void enc28j60_write_control_res(BANK bank,uint8_t address,uint8_t data){
 
 extern uint8_t enc28j60_init(const uint8_t MAC[]){
 	
-#ifdef ENC28J60_EBUG
+#ifdef ENC28J60_DEBUG
 	printf("Start init ...\r\n");
 #endif
 	uint8_t i = 0;
@@ -39,7 +39,6 @@ extern uint8_t enc28j60_init(const uint8_t MAC[]){
 	delay_ms(1);
 	enc28j60_RST_high();
 	delay_ms(1000);
-	enc28j60_spi_init();
 	
 	/* reset software */
 	enc28j60_write_cmd(SRC, 0x1F,0);
@@ -52,7 +51,7 @@ extern uint8_t enc28j60_init(const uint8_t MAC[]){
 		}
 	}while(timeout--);
 
-#ifdef ENC28J60_EBUG
+#ifdef ENC28J60_DEBUG
 	if (timeout == -1){
 		printf("Time out \r\n");
 		return false;
@@ -82,7 +81,7 @@ extern uint8_t enc28j60_init(const uint8_t MAC[]){
 	enc28j60_write_control_res(BANK_0, ERDPTL, RX_START_ADD%256);
 	enc28j60_write_control_res(BANK_0, ERDPTH, RX_START_ADD/256);
 
-#ifdef ENC28J60_EBUG
+#ifdef ENC28J60_DEBUG
 	uint8_t h,l= 0 ;
 	
 	printf("Tx space 0x%04x:0x%04x\r\n",TX_START_ADD, TX_STOP_ADD);
@@ -125,14 +124,13 @@ extern uint8_t enc28j60_init(const uint8_t MAC[]){
 	MY_MAC[4] = enc28j60_read_control_res(BANK_3, MAADR5);
 	MY_MAC[5] = enc28j60_read_control_res(BANK_3, MAADR6);
 	
-#ifdef ENC28J60_EBUG
+#ifdef ENC28J60_DEBUG
 	printf("MAC : 0x%02x-0x%02x-0x%02x-0x%02x-0x%02x-0x%02x\r\n",MY_MAC[0],MY_MAC[1],MY_MAC[2],MY_MAC[3],MY_MAC[4],MY_MAC[5]);
 #endif
 	for (i=0;i<6;i++){
 		if (MY_MAC[i] != MAC[i])
 			return false;
 	}
-
 	/* 	PHY config
 			To check PHY config, you can read a phy config address is 0x14h.
 		Because the reset value is 
@@ -150,7 +148,7 @@ extern uint8_t enc28j60_init(const uint8_t MAC[]){
 	/* Increment address when write,read */
 	enc28j60_write_cmd(BFS, ECON2, (1<<AUTOINC));
 	
-#ifdef ENC28J60_EBUG
+#ifdef ENC28J60_DEBUG
 	printf("Finish !\r\n");
 #endif
 	return 1;
@@ -176,12 +174,12 @@ extern uint16_t enc28j60_read_phy(uint8_t address){
 	}while(timeout--);
 	
 	if (timeout == -1){
-		#ifdef ENC28J60_EBUG
+		#ifdef ENC28J60_DEBUG
 				printf("Time out {%d}-{%02x}\r\n",timeout,status_h);
 		#endif
 		return 0xFFFF;
 	}
-	#ifdef ENC28J60_EBUG
+	#ifdef ENC28J60_DEBUG
 	printf("MISTAT : 0x%02x {%d}\r\n",status_h, timeout);
 	#endif
 	/* 4. Clear the MICMD.MIIRD bit */
@@ -237,7 +235,7 @@ void enc28j60_send_packet(uint8_t* data,uint16_t len){
 }
 
 extern bool enc28j60_load_packet(uint8_t *data, uint16_t len){
-	#ifdef ENC28J60_EBUG
+	#ifdef ENC28J60_DEBUG
 		printf("Send .....\r\n");
 	#endif
 	int32_t timeout = 10000;
@@ -266,12 +264,12 @@ extern bool enc28j60_load_packet(uint8_t *data, uint16_t len){
 //		status = enc28j60_read_control_res(BANK_0, ESTAT);
 	}while(timeout--);
 	if(timeout == -1){
-		#ifdef ENC28J60_EBUG
+		#ifdef ENC28J60_DEBUG
 			printf("Timeout %2d 0x%02x\r\n",timeout, status);
 		#endif
 		return false;
 	}
-	#ifdef ENC28J60_EBUG
+	#ifdef ENC28J60_DEBUG
 		printf("Finished ! \r\n");
 	#endif
 	return true;

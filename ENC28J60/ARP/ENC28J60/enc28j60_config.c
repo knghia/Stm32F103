@@ -1,32 +1,35 @@
-
+#include "binary.h"
 #include "enc28j60_config.h"
 
+#define SS		4
+#define RST		3
+
 void enc28j60_CS_low(void){
-	HAL_GPIO_WritePin(SPI1_SS_GPIO_Port, SPI1_SS_Pin, GPIO_PIN_RESET);
+	GPIOA->ODR &=~ (1<<SS);
 }
 
 void enc28j60_CS_high(void){
-	HAL_GPIO_WritePin(SPI1_SS_GPIO_Port, SPI1_SS_Pin, GPIO_PIN_SET);
+	GPIOA->ODR |= (1<<SS);
 }
 
 void enc28j60_RST_low(void){
-	HAL_GPIO_WritePin(RST_GPIO_Port, RST_Pin, GPIO_PIN_RESET);
+	GPIOA->ODR &=~ (1<<RST);
 }
 
 void enc28j60_RST_high(void){
-	HAL_GPIO_WritePin(RST_GPIO_Port, RST_Pin, GPIO_PIN_SET);
+	GPIOA->ODR |= (1<<RST);
 }
 
 void enc28j60_spi_init(void){
 }
 
 void enc28j60_spi_write(uint8_t data){
-	HAL_SPI_Transmit(&hspi1, &data, 1, HAL_MAX_DELAY);
+	HAL_SPI_Transmit(&hspi1, &data, 1, 100);
 }
 
 uint8_t enc28j60_spi_read(void){
 	uint8_t data;
-	HAL_SPI_Receive(&hspi1, &data, 1, HAL_MAX_DELAY);
+	HAL_SPI_Receive(&hspi1, &data, 1, 100);
 	return data;
 }
 

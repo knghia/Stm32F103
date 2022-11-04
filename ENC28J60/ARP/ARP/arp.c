@@ -44,8 +44,8 @@ extern bool arp_receiver_package(uint8_t* mac){
 		/* compare opcode */
 		if((arp_data.rx[ARP_I_OPCODE]*256 +arp_data.rx[ARP_I_OPCODE+1])  == ARP_OPCODE_REQUEST){
 			/* compare MAC source */
-			if(compare_array(&arp_data.rx[ARP_I_MAC_TARGET], _ARP_MAC_SOURCE, 6)){
-				if(compare_array(&arp_data.rx[ARP_I_IP_TARGET], _ARP_IP_SOURCE, 4)){
+			if(compare_array(&arp_data.rx[ARP_I_MAC_TARGET], (uint8_t*)_ARP_MAC_SOURCE, 6)){
+				if(compare_array(&arp_data.rx[ARP_I_IP_TARGET], (uint8_t*)_ARP_IP_SOURCE, 4)){
 					memcpy(mac, &arp_data.rx[ARP_I_MAC_SENDER], 6);
 					#ifdef DEBUG_ARP
 						printf("MAC: %02x %02x %02x %02x %02x %02x\r\n",mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -61,9 +61,9 @@ extern bool arp_receiver_package(uint8_t* mac){
 }
 
 extern void arp_init(uint8_t* mac_source,uint8_t* ip_source){
-	copy_array(_ARP_MAC_SOURCE, mac_source);
-	copy_array(_ARP_IP_SOURCE, ip_source);
-	enc28j60_init(_ARP_MAC_SOURCE);
+	copy_array((uint8_t*)_ARP_MAC_SOURCE, mac_source, 6);
+	copy_array((uint8_t*)_ARP_IP_SOURCE, ip_source, 6);
+	enc28j60_init((uint8_t*)_ARP_MAC_SOURCE);
 }
 
 extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target){
@@ -73,7 +73,7 @@ extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target){
 	ARP_Struct arp_struct;
 	
 	copy_array(arp_struct.MAC_dest, mac_dest, 6);
-	copy_array(arp_struct.MAC_source, _ARP_MAC_SOURCE, 6);
+	copy_array(arp_struct.MAC_source, (uint8_t*)_ARP_MAC_SOURCE, 6);
 	
 	arp_struct.Ethernet_type = swap16(ARP_ETHERNET_TYPE);
 	arp_struct.Hardwave_type = swap16(ARP_HARDWAVE_TYPE);
@@ -81,8 +81,8 @@ extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target){
 	arp_struct.Size = swap16(ARP_SIZE);
 	arp_struct.Opcode = swap16(ARP_OPCODE_REPLY);
 	
-	copy_array(arp_struct.MAC_sender, _ARP_MAC_SOURCE, 6);
-	copy_array(arp_struct.IP_sender, _ARP_IP_SOURCE, 4);
+	copy_array(arp_struct.MAC_sender, (uint8_t*)_ARP_MAC_SOURCE, 6);
+	copy_array(arp_struct.IP_sender, (uint8_t*)_ARP_IP_SOURCE, 4);
 	copy_array(arp_struct.MAC_target, mac_target, 6);
 	copy_array(arp_struct.IP_target, ip_target, 4);
 

@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../ENC28J60;../Use</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../ENC28J60;../Use;../ARP</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -570,19 +570,29 @@
               <FilePath>..\ENC28J60\enc28j60.c</FilePath>
             </File>
             <File>
+              <FileName>enc28j60_config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ENC28J60\enc28j60_config.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>ARP</GroupName>
+          <Files>
+            <File>
               <FileName>arp.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\ENC28J60\arp.c</FilePath>
+              <FilePath>..\ARP\arp.c</FilePath>
             </File>
             <File>
               <FileName>crc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\ENC28J60\crc.c</FilePath>
+              <FilePath>..\ARP\crc.c</FilePath>
             </File>
             <File>
-              <FileName>enc28j60_config.c</FileName>
+              <FileName>support.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\ENC28J60\enc28j60_config.c</FilePath>
+              <FilePath>..\ARP\support.c</FilePath>
             </File>
           </Files>
         </Group>

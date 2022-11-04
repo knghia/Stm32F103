@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "support.h"
 
-#define DEBUG_ARP
+// #define DEBUG_ARP
 
 #define ARP_PACKET_LEN					42
 
@@ -64,7 +64,7 @@ Crc
 
 typedef struct
 {
-	uint8_t MAC_dest[6];             		// MAC destination
+	uint8_t MAC_dest[6];             				// MAC destination
 	uint8_t MAC_source[6];                  // MAC source
 	uint16_t Ethernet_type;                 // Ethernet type
 	uint16_t Hardwave_type;                 // Hardwave type
@@ -78,7 +78,7 @@ typedef struct
 }ARP_Struct;
 
 extern void arp_init(uint8_t* mac_source,uint8_t* ip_source);
-extern bool arp_get_mac(uint8_t* mac_target,const uint8_t* ip_target);
+extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target);
 extern bool arp_receiver_package(uint8_t* mac);
 
 #endif

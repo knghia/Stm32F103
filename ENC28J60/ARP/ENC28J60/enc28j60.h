@@ -209,7 +209,7 @@ typedef enum{
 #define ERXFCON 	0x18
 #define EPKTCNT 	0x19
 
-//#define ENC28J60_EBUG
+// #define ENC28J60_DEBUG
 
 typedef struct{
 	uint16_t pointer_rx;
