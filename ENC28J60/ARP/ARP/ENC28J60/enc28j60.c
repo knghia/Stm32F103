@@ -276,7 +276,6 @@ extern bool enc28j60_load_packet(uint8_t *data, uint16_t len){
 	return true;
 }
 
-
 extern bool enc28j60_receiver_package(uint8_t* data, uint8_t* len){
 	static Enc28j60Frame arp_data;
 	/* Enable receive */

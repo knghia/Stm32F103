@@ -12,6 +12,10 @@ void arp_send_packet(uint8_t* package, uint16_t len){
 	enc28j60_load_packet(package, ARP_PACKET_LEN);
 }
 
+extern bool arp_receiver_package(uint8_t* data, uint8_t* len){
+	return enc28j60_receiver_package(data, len);
+}
+
 extern void arp_init(uint8_t* mac_source,uint8_t* ip_source){
 	copy_array((uint8_t*)_ARP_MAC_SOURCE, mac_source, 6);
 	copy_array((uint8_t*)_ARP_IP_SOURCE, ip_source, 6);

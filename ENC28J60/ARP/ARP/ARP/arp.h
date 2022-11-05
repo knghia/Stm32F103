@@ -85,5 +85,6 @@ typedef enum{
 
 extern void arp_init(uint8_t* mac_source,uint8_t* ip_source);
 extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target, uint16_t timeout);
+extern bool arp_receiver_package(uint8_t* data, uint8_t* len);
 extern void arp_send_responce(uint8_t* mac_target,uint8_t* ip_target);
 #endif
