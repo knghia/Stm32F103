@@ -33,7 +33,7 @@
 
 + Target IP (4) : địa chỉ của PC
 
-# Terminal
+# Get mac
 
 ![image info](./Image/terminal.png)
 

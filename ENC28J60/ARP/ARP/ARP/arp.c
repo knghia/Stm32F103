@@ -42,14 +42,14 @@ extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target, uint16_t timeout
 	while(timeout--){
 		arp_send_packet((uint8_t *)&arp_struct, ARP_PACKET_LEN);
 		delay_ms(100);
-		status = arp_receiver_package(data, &len);
+		status = enc28j60_receiver_package(data, &len);
 		if ((status == true) || (timeout == 0)){
 			break;
 		}
 	}
 	if(timeout > 0){
 		/* ARP OPCODE request */
-		if((data[ARP_I_OPCODE]*256 +data[ARP_I_OPCODE+1])  == ARP_OPCODE_REQUEST){
+		if((data[ARP_I_OPCODE]*256 +data[ARP_I_OPCODE+1])  == ARP_OPCODE_REPLY){
 			/* compare MAC source */
 			if(compare_array(&data[ARP_I_MAC_TARGET], (uint8_t*)_ARP_MAC_SOURCE, 6)){
 				/* compare IP source */
@@ -66,14 +66,7 @@ extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target, uint16_t timeout
 	return false;
 }
 
-extern bool arp_receiver_package(uint8_t* data, uint8_t* len){
-	if (enc28j60_receiver_package(data, len)){
-		return true;
-	}
-	return false;
-}
-
-extern bool arp_send_responce(uint8_t* mac_target,uint8_t* ip_target){
+extern void arp_send_responce(uint8_t* mac_target,uint8_t* ip_target){
 	ARP_Struct arp_struct;
 	copy_array(arp_struct.MAC_dest, mac_target, 6);
 	copy_array(arp_struct.MAC_source, (uint8_t*)_ARP_MAC_SOURCE, 6);
@@ -91,4 +84,5 @@ extern bool arp_send_responce(uint8_t* mac_target,uint8_t* ip_target){
 
 	arp_send_packet((uint8_t *)&arp_struct, ARP_PACKET_LEN);
 }
+
 
