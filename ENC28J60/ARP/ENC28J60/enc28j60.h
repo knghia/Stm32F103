@@ -218,7 +218,6 @@ typedef struct{
 	uint8_t rx[RX_SIZE];
 }Enc28j60Frame;
 
-
 extern uint8_t enc28j60_init(const uint8_t MAC[]);
 extern void enc28j60_set_bank(BANK bank);
 
@@ -229,8 +228,7 @@ extern bool enc28j60_write_phy(uint8_t address,uint16_t data);
 extern uint16_t enc28j60_read_phy(uint8_t address);
 
 extern bool enc28j60_load_packet(uint8_t *data, uint16_t len);
-
-extern bool enc28j60_receive_packet(void);
+extern bool enc28j60_receiver_package(uint8_t* data, uint8_t* len);
 
 extern void enc28j60_poll(void);
 

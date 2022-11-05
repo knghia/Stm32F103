@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "support.h"
 
-// #define DEBUG_ARP
+#define DEBUG_ARP
 
 #define ARP_PACKET_LEN					42
 
@@ -14,8 +14,8 @@
 #define ARP_HARDWAVE_TYPE				0x0001
 #define ARP_PROTOCOL_TYPE				0x0800
 #define ARP_SIZE								0x0604
-#define ARP_OPCODE_REPLY				0x0001
-#define ARP_OPCODE_REQUEST			0x0002
+#define ARP_OPCODE_REPLY				0x0002
+#define ARP_OPCODE_REQUEST			0x0001
 
 /* Index */
 
@@ -77,8 +77,14 @@ typedef struct
 	uint8_t IP_target[4];                   // Target IP
 }ARP_Struct;
 
-extern void arp_init(uint8_t* mac_source,uint8_t* ip_source);
-extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target);
-extern bool arp_receiver_package(uint8_t* mac);
+typedef enum{
+	ARP_ERROR_MAC = 0,
+	ARP_ERROR_IP = 1,
+	ARP_ERROR_CRC = 2,
+}ARP_ERROR;
 
+extern void arp_init(uint8_t* mac_source,uint8_t* ip_source);
+extern bool arp_receiver_package(uint8_t* data, uint8_t* len);
+extern bool arp_get_mac(uint8_t* mac_target,uint8_t* ip_target, uint16_t timeout);
+extern bool arp_send_responce(uint8_t* mac_target,uint8_t* ip_target);
 #endif

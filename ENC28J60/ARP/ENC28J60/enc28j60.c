@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "binary.h"
+#include "support.h"
 #include "enc28j60.h"
 #include "enc28j60_config.h"
 #include "crc.h"
@@ -273,5 +274,48 @@ extern bool enc28j60_load_packet(uint8_t *data, uint16_t len){
 		printf("Finished ! \r\n");
 	#endif
 	return true;
+}
+
+
+extern bool enc28j60_receiver_package(uint8_t* data, uint8_t* len){
+	static Enc28j60Frame arp_data;
+	/* Enable receive */
+	enc28j60_write_cmd(BFS, ECON1, (1<<RXEN));
+	if( enc28j60_read_control_res(BANK_1,EPKTCNT) == 0 )
+	{
+		return false;
+	}
+	/* Set the read pointer to the start of the received packet */
+	enc28j60_write_control_res(BANK_0,ERDPTL,arp_data.pointer_rx/256);
+	enc28j60_write_control_res(BANK_0,ERDPTH,arp_data.pointer_rx>>8);
+	/* read the next packet pointer */
+	arp_data.pointer_rx = enc28j60_read_cmd(RBM, 0);
+	arp_data.pointer_rx |= (enc28j60_read_cmd(RBM, 0)<<8);
+	/* read the packet length (see datasheet page 43) */
+	arp_data.len  = enc28j60_read_cmd(RBM, 0);
+	arp_data.len |= (enc28j60_read_cmd(RBM, 0)<<8);
+
+	arp_data.status = enc28j60_read_cmd(RBM, 0);
+	arp_data.status |= (enc28j60_read_cmd(RBM, 0)<<8);
+	
+	if (arp_data.len == 0){
+		enc28j60_write_cmd(BFC, ECON1, (1<<RXEN));
+		return false;
+	}
+	
+	if ((arp_data.status & 0x80)==0){
+		arp_data.len = 0;
+	}
+	else{
+		for(uint8_t i=0;i<arp_data.len;i++){
+			arp_data.rx[i] = enc28j60_read_cmd(RBM, 0);
+		}
+		*len = arp_data.len;
+		copy_array(data, arp_data.rx, arp_data.len);
+		enc28j60_write_cmd(BFC, ECON1, (1<<RXEN));
+		return true;
+	}
+	enc28j60_write_cmd(BFC, ECON1, (1<<RXEN));
+	return false;
 }
 
