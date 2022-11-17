@@ -13,7 +13,7 @@
 #define ARP_ETHERNET_TYPE				0x0806
 #define ARP_HARDWAVE_TYPE				0x0001
 #define ARP_PROTOCOL_TYPE				0x0800
-#define ARP_SIZE						0x0604
+#define ARP_SIZE								0x0604
 #define ARP_OPCODE_REPLY				0x0002
 #define ARP_OPCODE_REQUEST			0x0001
 
