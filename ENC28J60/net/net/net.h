@@ -111,6 +111,19 @@ extern void net_init(u08 mymac[6], u08 myip[4], u08 myport);
 #define ARP_SIZE								0x0604
 #define ARP_OPCODE_REPLY				0x0002
 #define ARP_OPCODE_REQUEST			0x0001
+
+#define I_ARP_MAC_DEST					0
+#define I_ARP_MAC_SOURCE				6
+#define I_ARP_ETHERNET_TYPE			12
+#define I_ARP_HARDWAVE_TYPE			14
+#define I_ARP_PROTOCOL_TYPE			16
+#define I_ARP_SIZE							18
+#define I_ARP_OPCODE						20
+#define I_ARP_MAC_SENDER				22
+#define I_ARP_IP_SENDER					28
+#define I_ARP_MAC_TARGET				32
+#define I_ARP_IP_TARGET					38
+
 typedef struct
 {
 	uint8_t MAC_dest[6];             				// MAC destination
@@ -126,7 +139,7 @@ typedef struct
 	uint8_t IP_target[4];                   // Target IP
 }ARP_Frame;
 
-extern bool net_arp_check_broadcast(u08* data, u08 len);
+extern bool net_arp_check_broadcast(u08* ping, u08 len);
 extern void net_arp_reply(u08* ping, u08 len);
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout);
 

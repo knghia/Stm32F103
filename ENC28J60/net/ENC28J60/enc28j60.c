@@ -57,16 +57,19 @@ void enc28j60ReadBuffer(u16 len, u08* data)
 
 void enc28j60WriteBuffer(u16 len, u08* data)
 	{
+		u32 crc = crc32(data, 42);
 		ENC28J60_CSL();
-		// issue write command
 		SPI1_ReadWrite(ENC28J60_WRITE_BUF_MEM);
-		
-		while(len)
-			{
+		while(len){
 			len--;
 			SPI1_ReadWrite(*data);
 			data++;
-			}
+		}
+		SPI1_ReadWrite((crc&0xFF000000)>>24);
+		SPI1_ReadWrite((crc&0x00FF0000)>>16);
+		SPI1_ReadWrite((crc&0x0000FF00)>>8);
+		SPI1_ReadWrite(crc&0x000000FF);
+		
 		ENC28J60_CSH();
 	}
 
@@ -144,13 +147,6 @@ bool enc28j60Init(u08* macaddr)
 			break;
 		}
 	}while(timeout--);
-	if (timeout == -1){
-		printf("Time out \r\n");
-		return false;
-	}
-	else{
-		printf("Finish 0x%04x 0x%02x\r\n",status, timeout);
-	}
 	// do bank 0 stuff
 	// initialize receive buffer
 	// 16-bit transfers, must write low byte first
