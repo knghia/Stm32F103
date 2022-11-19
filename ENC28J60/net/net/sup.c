@@ -42,13 +42,30 @@ extern u16 icmp_checksum(u08 *data, u16 len){
 	return swap16((u16) cs);
 }
 
-extern u16 icmp_ip_checksum(u08 *ip_data, u16 len){
+extern u16 icmp_ip_checksum(u08 *data, u16 len){
 	u32 cs=0;
 	while(len){
-		cs += (u16) (((u32)*ip_data<<8)|*(ip_data+1));
-		ip_data+=2;
+		cs += (u16) (((u32)*data<<8)|*(data+1));
+		data+=2;
 		len-=2;
 	}
+	while (cs>>16){
+		cs=(u16)cs+(cs>>16);
+	}
+	cs=~cs;
+	return swap16(cs);
+}
+
+extern u16 udp_checksum(u08 *data, u16 len){
+	u32 cs= 0;
+	while(len>1){
+		cs += (u16) (((u32)*data<<8)|*(data+1));
+		data+=2;
+		len-=2;
+	}
+    if(len){
+        cs+=((u32)*data)<<8;
+    }
 	while (cs>>16){
 		cs=(u16)cs+(cs>>16);
 	}
