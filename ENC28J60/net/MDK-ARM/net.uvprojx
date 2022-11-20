@@ -590,6 +590,11 @@
           <GroupName>Net</GroupName>
           <Files>
             <File>
+              <FileName>sup.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\net\sup.h</FilePath>
+            </File>
+            <File>
               <FileName>net.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\net\net.c</FilePath>
@@ -603,11 +608,6 @@
               <FileName>sup.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\net\sup.c</FilePath>
-            </File>
-            <File>
-              <FileName>sup.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\net\sup.h</FilePath>
             </File>
           </Files>
         </Group>

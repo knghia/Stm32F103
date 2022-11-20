@@ -1,15 +1,15 @@
 #include "main.h"
 #include "sup.h"
 
-extern uint8_t copy_arr(uint8_t* dest, uint8_t* source, uint8_t len){
-    for(uint8_t i=0; i<len; i++){
+extern u08 copy_arr(u08* dest, u08* source, u08 len){
+    for(u08 i=0; i<len; i++){
         dest[i] = source[i];
     }
     return len;
 }
 
-extern bool com_arr(uint8_t* a,const uint8_t* b, uint8_t len){
-	uint8_t i = 0;
+extern bool com_arr(u08* a,const u08* b, u08 len){
+	u08 i = 0;
 	for (i=0;i<len;i++){
 		if(a[i] != b[i]){
 			return false;
@@ -18,18 +18,17 @@ extern bool com_arr(uint8_t* a,const uint8_t* b, uint8_t len){
 	return true;
 }
 
-extern uint16_t swap16(uint16_t data){
-	uint8_t h = (data>>8);
-	uint8_t l = data%256;
+extern u16 swap16(u16 data){
+	u08 h = (data>>8);
+	u08 l = data%256;
 	return ((l<<8) + h);
 }
 
-extern u16 icmp_checksum(u08 *data, u16 len){
-	u32 i = 0;
+u16 base_checksum(u08 *data, u16 len){
 	u32 cs = 0;
 	while(len>1){
-		cs += 0xFFFF & ((data[i]<<8)|data[i+1]);
-		i+=2;
+		cs += (u16) (((u32)*data<<8)|*(data+1));
+		data+=2;
 		len-=2;
 	}
 	if (len){
@@ -42,35 +41,51 @@ extern u16 icmp_checksum(u08 *data, u16 len){
 	return swap16((u16) cs);
 }
 
-extern u16 icmp_ip_checksum(u08 *data, u16 len){
-	u32 cs=0;
-	while(len){
-		cs += (u16) (((u32)*data<<8)|*(data+1));
-		data+=2;
-		len-=2;
-	}
-	while (cs>>16){
-		cs=(u16)cs+(cs>>16);
-	}
-	cs=~cs;
-	return swap16(cs);
+extern u16 icmp_checksum(u08 *data, u16 len){
+	return base_checksum(data, len);
 }
 
+extern u16 ipv4_checksum(u08 *data, u16 len){
+	return base_checksum(data, len);
+}
+
+/* 
+element of udp data
+0xc0ff, 0xff32, // c0 ff ff 32 => Source IP Address : 192.255.255.50
+0xc0ff, 0xff33, // c0 ff ff 33 => Destination IP Address : 192.255.255.51
+0x0011,         // Zero(0x00), Protocol(0x11)
+0x000c,         // UDP Length
+// UDP Header
+0xa45c,         // a4 5c => Source Port : 0xa45c = 42076
+0x270f,         // 27 0f => Destination Port : 0x270f = 9999
+0x000c,         // UDP Length
+0x7465, 0x7374  // 74 65 73 74 => "test"
+
+UDP Length : duoc cong 2 lan
+0x0011 : Protocol(0x11) la thanh phan ben ngoai
+
+len: tinh tu source IP
+-> len of udp : len - 8
+0x11  : Protocol(0x11) la thanh phan ben ngoai
+u32 cs = 0x11 + len - 8;
+
+*/
+
 extern u16 udp_checksum(u08 *data, u16 len){
-	u32 cs= 0;
+	u32 cs = 0x11 + len - 8;
 	while(len>1){
 		cs += (u16) (((u32)*data<<8)|*(data+1));
 		data+=2;
 		len-=2;
 	}
-    if(len){
-        cs+=((u32)*data)<<8;
-    }
+	if (len){
+		cs += (0xFF & *data)<<8;
+	}
 	while (cs>>16){
-		cs=(u16)cs+(cs>>16);
+		cs = ((u16)cs+(cs>>16));
 	}
 	cs=~cs;
-	return swap16(cs);
+	return swap16((u16)cs);
 }
 
 

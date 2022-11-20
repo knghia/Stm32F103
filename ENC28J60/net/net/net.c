@@ -1,14 +1,13 @@
 #include "main.h"
 
-u08 source_port=80;
-u16 source_dest = 0;
+u16 source_port = 80;
 u08 mac_addr[6] = {0};
 u08 ip_addr[4] = {0};
 
 u08 mac_pc[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 u08 ip_pc[4] = {192,168,137,10};
 
-extern void net_init(u08 mymac[6], u08 myip[4], u08 myport){
+extern void net_init(u08 mymac[6], u08 myip[4], u16 myport){
 	u08 debug = 0xFF;
 	/* 1. INIT ENC28J60 */
 	enc28j60Init(mymac);  
@@ -26,47 +25,84 @@ extern void net_init(u08 mymac[6], u08 myip[4], u08 myport){
 }
 
 #define BUFFER_SIZE 1500
+volatile u08 rx_buf[BUFFER_SIZE+1] = {0};
+volatile u16 plen = 0;
 
 extern bool net_analysis(void){
-	static u08 buf[BUFFER_SIZE+1] = {0};
-	static u16 plen = 0;
+	#ifndef DEBUG
 	static u08 index = 0;
-	plen = enc28j60PacketReceive(BUFFER_SIZE, buf);
+	#endif
+	ProtocolIP protocol = NONE;
+	plen = 0;
+	plen = enc28j60PacketReceive(BUFFER_SIZE, (u08*)rx_buf);
 	if (plen == 0){ 
 		return false;
 	}
 	else{
-		printf("plen %02d \r\n", plen);
-		if (net_arp_check_broadcast(buf, plen)){
-			net_arp_reply(buf, plen);
-			index+=1;
-			printf("arp %02d \r\n", index);
-			return true;
+		protocol = NONE;
+		rx_buf[plen] = '\0';
+		if(((rx_buf[I_ARP_ETHERNET_TYPE]<<8) + \
+			rx_buf[I_ARP_ETHERNET_TYPE+1]) == ARP_ETHERNET_TYPE){
+			protocol = ARP;
 		}
-		if (net_icmp_check(buf, plen)){
-			net_icmp_reply(buf, plen);
-			index+=1;
-			printf("icmp %02d \r\n", index);
-			return true;
+		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_ICMP){
+			protocol = ICMP;
 		}
-		if (net_udp_check(buf, plen)){
-			index+=1;
-			printf("udp %02d \r\n", index);
-			net_udp_reply(buf, plen);
-			return true;
+		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_UDP){
+			protocol = UDP;
 		}
+		
+		switch (protocol){
+			case ARP:{
+				if (net_arp_check_broadcast((u08*)rx_buf, plen) == true){
+					net_arp_reply((u08*)rx_buf, plen);
+					#ifdef DEBUG
+					index+=1;
+					printf("arp %d \r\n", index);
+					#endif
+					return true;
+				}
+				net_arp_reply((u08*)rx_buf, plen);
+				break;
+			}
+			case ICMP:{
+				if (net_icmp_check((u08*)rx_buf, plen) == true){
+					net_icmp_reply((u08*)rx_buf, plen);
+					#ifdef DEBUG
+					index+=1;
+					printf("icmp %d \r\n", index);
+					#endif
+					return true;
+				}
+				break;
+			}
+			case UDP:{
+				if (net_udp_check((u08*)rx_buf, plen) == true){
+					net_udp_reply((u08*)rx_buf, plen);
+					#ifdef DEBUG
+					index+=1;
+					printf("udp %d \r\n", index);
+					#endif
+					return true;
+				}
+				break;
+			}
+			default:
+				break;
+		}
+		return false;
 	}
-	return false;
 }
 
-extern bool net_arp_check_broadcast(u08* ping, u08 len){
+extern bool net_arp_check_broadcast(u08* ping, u16 len){
 	if (len<41){
 		return false;
 	}
-	if(!com_arr(&ping[I_ARP_MAC_SOURCE], mac_pc, 6)){
+	u08 mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+	if(!com_arr(&ping[I_ARP_MAC_DEST], mac, 6)){
 		return false;
 	}
-	if(!com_arr(&ping[I_ARP_IP_TARGET], ip_pc, 4)){
+	if(!com_arr(&ping[I_ARP_IP_TARGET], ip_addr, 4)){
 		return false;
 	}
 	/* check  protocol IPv4 - 0x0800*/
@@ -74,13 +110,13 @@ extern bool net_arp_check_broadcast(u08* ping, u08 len){
 		return false;
 	}
 	/* check  protocol IPv4 - 0x0806*/
-	if(((ping[I_ARP_ETHERNET_TYPE]<<8) + ping[I_ARP_ETHERNET_TYPE+1]) == ARP_ETHERNET_TYPE){
-		return true;
+	if(((ping[I_ARP_ETHERNET_TYPE]<<8) + ping[I_ARP_ETHERNET_TYPE+1]) != ARP_ETHERNET_TYPE){
+		return false;
 	}
-	return false;
+	return true;
 }
 
-extern void net_arp_reply(u08* ping, u08 len){
+extern void net_arp_reply(u08* ping, u16 len){
 	ARP_Frame arp_data;
 	copy_arr(arp_data.MAC_dest, &ping[I_ARP_MAC_SENDER], 6);
 	copy_arr(arp_data.MAC_source, mac_addr, 6);
@@ -144,8 +180,8 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 							printf("MAC: %02x %02x %02x %02x %02x %02x\r\n", \
 						mac_target[0], mac_target[1], mac_target[2], \
 						mac_target[3], mac_target[4], mac_target[5]);
-						return true;
 						#endif
+						return true;
 					}
 				}
 			}
@@ -157,7 +193,7 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 	return false;
 }
 
-extern bool net_icmp_check(u08* ping, u08 len){
+extern bool net_icmp_check(u08* ping, u16 len){
 	if (len<41){
 		return false;
 	}
@@ -182,70 +218,28 @@ extern bool net_icmp_check(u08* ping, u08 len){
 			return false;
 	}
 	/* check crc */
-//	uint16_t real_crc, crc = 0;
-//	real_crc = ping[I_ICMP_CHECKSUM] + (ping[I_ICMP_CHECKSUM+1]<<8);
-//	ping[I_ICMP_CHECKSUM] = 0;
-//	ping[I_ICMP_CHECKSUM+1] = 0;
-//	crc = icmp_checksum(&ping[I_ICMP_TYPE], ICMP_SIZE+ len-IPV4_ICMP_SIZE);
-//	if(real_crc != crc){
-//		return false;
-//	}
-	/* ICMP protocol : 0x01 */
-//	printf("icmp %04x %04x\r\n", ((ping[I_IPV4_ETHERNET_TYPE]<<8)+ ping[I_IPV4_ETHERNET_TYPE+1]), IPV4_ETHERNET_TYPE);
-//	printf("icmp %02x %02x\r\n", ping[I_IPV4_PROTOCOL], IPV4_PROTOCOL_ICMP);
-	
-	if (((ping[I_IPV4_ETHERNET_TYPE]<<8)+\
-		ping[I_IPV4_ETHERNET_TYPE+1]) == IPV4_ETHERNET_TYPE){
-		if (ping[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_ICMP){
-			return true;
-		}
+	uint16_t real_crc, crc = 0;
+	real_crc = ping[I_ICMP_CHECKSUM] + (ping[I_ICMP_CHECKSUM+1]<<8);
+	ping[I_ICMP_CHECKSUM] = 0;
+	ping[I_ICMP_CHECKSUM+1] = 0;
+	crc = icmp_checksum(&ping[I_ICMP_TYPE], ICMP_SIZE+ len-IPV4_ICMP_SIZE);
+	if(real_crc != crc){
+		return false;
 	}
-	return false;
+	if (((ping[I_IPV4_ETHERNET_TYPE]<<8)+ ping[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
+		return false;
+	}
+	/* ICMP protocol : 0x01 */
+	if (ping[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_ICMP){
+		return false;
+	}
+	return true;
 }
-/*
-extern void net_icmp_response(u08* data, u08 length){
-  static u16 ipv4_identification = IPV4_IDENTIFICATION;
-	static u16 icmp_identification = ICMP_IDENTIFIER;
-	static u16 icmp_senquence_number = ICMP_SEQUENCE_NUMBER;
+
+extern void net_icmp_reply(u08* ping, u16 len){
 	ICMP_Frame icmp_struct;
-	copy_arr(icmp_struct.MAC_source, mac_addr, 6);
-	copy_arr(icmp_struct.MAC_dest, mac_pc, 6);
-	icmp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
-	
-	icmp_struct.Header_length = IPV4_HEADER_LENGTH;
-	icmp_struct.Services = IPV4_SERVICES;
-	icmp_struct.TotalLength = swap16(IPV4_SIZE + length);
-	icmp_struct.Identification = swap16(ipv4_identification);
-	icmp_struct.Flag = swap16(IPV4_FLAG);
-	icmp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
-	icmp_struct.Protocol = IPV4_PROTOCOL_ICMP;
-	icmp_struct.CheckSum = icmp_ip_checksum((u08 *)&icmp_struct.Header_length, 20);
-
-	copy_arr(icmp_struct.SourceIP, ip_pc, 4);
-	copy_arr(icmp_struct.DestIP, ip_addr, 4);
-
-	icmp_struct.ICMP_Type = ICMP_REQUEST;
-	icmp_struct.ICMP_Code = ICMP_CODE;
-	icmp_struct.ICMP_Identification = swap16(icmp_identification);
-	icmp_struct.ICMP_SequenceNumber = swap16(icmp_senquence_number);
-	copy_arr(icmp_struct.ICMP_data, data, length);
-	
-	icmp_struct.ICMP_Checksum = 0x0000;
-	icmp_struct.ICMP_Checksum = icmp_checksum((u08*)&(icmp_struct.ICMP_Type), ICMP_SIZE + length);
-	
-	enc28j60PacketSend(IPV4_ICMP_SIZE + length, (u08*)&icmp_struct);
-	
-	ipv4_identification+=1;
-	icmp_identification+=1;
-	icmp_senquence_number+=1;
-}
-*/
-
-extern void net_icmp_reply(u08* ping, u08 len){
-	/* check crc */
-	ICMP_Frame icmp_struct;
-	copy_arr(icmp_struct.MAC_source, &ping[0], 6);
 	copy_arr(icmp_struct.MAC_dest, &ping[6], 6);
+	copy_arr(icmp_struct.MAC_source,  &ping[0], 6);
 	icmp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
 	
 	icmp_struct.Header_length = IPV4_HEADER_LENGTH;
@@ -256,7 +250,7 @@ extern void net_icmp_reply(u08* ping, u08 len){
 	icmp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
 	icmp_struct.Protocol = IPV4_PROTOCOL_ICMP;
 	icmp_struct.CheckSum = 0x0000;
-	icmp_struct.CheckSum = icmp_ip_checksum((u08 *)&icmp_struct.Header_length, 20);
+	icmp_struct.CheckSum = ipv4_checksum((u08 *)&icmp_struct.Header_length, IPV4_SIZE);
 
 	copy_arr(icmp_struct.SourceIP, ip_addr, 4);
 	copy_arr(icmp_struct.DestIP, ip_pc, 4);
@@ -266,14 +260,14 @@ extern void net_icmp_reply(u08* ping, u08 len){
 	icmp_struct.ICMP_Checksum = 0x0000;
 	icmp_struct.ICMP_Identification = swap16((ping[I_ICMP_IDENTIFIER]<<8) + ping[I_ICMP_IDENTIFIER+1]);
 	icmp_struct.ICMP_SequenceNumber = swap16((ping[I_ICMP_SEQUENCE_NUMBER]<<8) + ping[I_ICMP_SEQUENCE_NUMBER+1]);
-	copy_arr(icmp_struct.ICMP_data, &ping[IPV4_ICMP_SIZE], len-IPV4_ICMP_SIZE);
+	copy_arr(icmp_struct.ICMP_Data, &ping[IPV4_ICMP_SIZE], len-IPV4_ICMP_SIZE);
 	
 	icmp_struct.ICMP_Checksum = icmp_checksum((u08*)&(icmp_struct.ICMP_Type), ICMP_SIZE+ len-IPV4_ICMP_SIZE);
 
 	enc28j60PacketSend(len, (u08*)&icmp_struct);
 }
 
-extern bool net_udp_check(u08* response, u08 len){
+extern bool net_udp_check(u08* response, u16 len){
 	if (len<41){
 		return false;
 	}
@@ -293,64 +287,80 @@ extern bool net_udp_check(u08* response, u08 len){
 	if (!com_arr(&response[I_IPV4_DEST_IP], ip_addr, 4)){
 			return false;
 	}
-//	/* check crc */
-//	u16 real_crc = 0;
-//	u16 crc = 0;
-//	u08 data[50] = {0};
-//	/* source ip */
-//	copy_arr(&data[0], &response[I_IPV4_SOURCE_IP], 4);
-//	/* dest ip */
-//	copy_arr(&data[4], &response[I_IPV4_DEST_IP], 4);
-//	/* UDP protocal */
-//	data[8] = 0x00;
-//	data[9] = 0x11;
-//	/* Padding length */
-//	data[10] = 0x00;
-//	data[11] = 0x0A;
-//	/* UDP source port */
-//	copy_arr(&data[12], &response[I_UDP_SRC_PORT], 2);
-//	/* UDP dest port */
-//	copy_arr(&data[14], &response[I_UDP_DST_PORT], 2);
-//	/* UDP length */
-//	copy_arr(&data[16], &response[I_UDP_LEN], 2);
-//	/* Data */
-//	copy_arr(&data[18], &response[I_UDP_DATA], len-I_UDP_DATA);
-//	
-//	real_crc = response[I_UDP_CHECKSUM]+ (response[I_UDP_CHECKSUM+1]<<8);
-//	crc = udp_checksum(data, 18+len-I_UDP_DATA);
-	
-//	printf("cs %02x \r\n", crc);
-//	printf("real_cs %02x \r\n", real_crc);
-//	
-//	printf("len %02x \r\n", ICMP_SIZE+ len-IPV4_ICMP_SIZE);
-//	for(uint8_t i=0;i < 18+len-I_UDP_DATA; i++){
-//		printf("%02x ", data[i]);
-//	}
-//	printf("\r\n");
-	
-//	if (real_crc != crc){
-//		return false;
-//	}
-	/* UDP protocol : 0x11 */
-	if (((response[I_IPV4_ETHERNET_TYPE]<<8)+\
-		response[I_IPV4_ETHERNET_TYPE+1]) == IPV4_ETHERNET_TYPE){
-		if (response[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_UDP){
-			return true;
-		}
+	/* compare port source */
+	u16 port = (response[I_UDP_DST_PORT]<<8) + response[I_UDP_DST_PORT+1];
+	if (port != source_port){
+			return false;
 	}
-	return false;
-}
+	/* check crc */
+	u16 real_crc, crc, crc_len = 0;
+	real_crc = response[I_UDP_CHECKSUM] + (response[I_UDP_CHECKSUM+1]<<8);
+	response[I_UDP_CHECKSUM] = 0;
+	response[I_UDP_CHECKSUM+1] = 0;
+	crc_len = (response[I_UDP_LEN]<<8) + response[I_UDP_LEN+1] + 8;
+	crc = udp_checksum(&response[I_IPV4_SOURCE_IP], crc_len);
 	
-extern void net_udp_reply(u08* ping, u08 len){
-	source_port = (ping[I_UDP_SRC_PORT]<<8) + ping[I_UDP_SRC_PORT+1];
-	
+	if (real_crc != crc){
+		return false;
+	}
+	/* UDP protocol : 0x11 */
+	if (((response[I_IPV4_ETHERNET_TYPE]<<8)+response[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
+		return false;
+	}
+	if (response[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
+		return false;
+	}
+	return true;
 }
 
+extern void net_udp_reply(u08* ping, u16 len){
+	static u08 udp_data_request[50];
+	static u08 udp_len = 0;
+	
+	udp_len = (ping[I_UDP_LEN]<<8) + ping[I_UDP_LEN+1];
+	copy_arr(udp_data_request, &ping[I_UDP_DATA], udp_len);
+	
+	if (com_arr(udp_data_request, (u08*)"LED13=HIGH\r\n", 13)){
+		net_udp_handle(0);
+		net_udp_request(ping, (u08*)"LED13=HIGH OK\r\n", 16);
+	}
+	else if (com_arr(udp_data_request, (u08*)"LED13=LOW\r\n", 12)){
+		net_udp_handle(1);
+		net_udp_request(ping, (u08*)"LED13=LOW OK\r\n", 15);
+	}
+	else{
+		net_udp_handle(2);
+		net_udp_request(ping, (u08*)"INCORRECT\r\n", 14);
+	}
+}
 
-
-
-
-
-
-
-
+extern void net_udp_request(u08* response, u08* data, u16 len_of_data){
+	UDP_Frame udp_struct;
+	copy_arr(udp_struct.MAC_dest, &response[6], 6);
+	copy_arr(udp_struct.MAC_source, &response[0], 6);
+	
+	udp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
+	
+	udp_struct.Header_length = IPV4_HEADER_LENGTH;
+	udp_struct.Services = IPV4_SERVICES;
+	udp_struct.TotalLength = swap16(IPV4_SIZE + UDP_SIZE	+ len_of_data);
+	udp_struct.Identification = swap16((response[I_IPV4_IDENTIFICATION]<<8) + response[I_IPV4_IDENTIFICATION+1]);
+	udp_struct.Flag = swap16(IPV4_FLAG);
+	udp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
+	udp_struct.Protocol = IPV4_PROTOCOL_UDP;
+	udp_struct.CheckSum = 0x0000;
+	udp_struct.CheckSum = ipv4_checksum((u08 *)&udp_struct.Header_length, IPV4_SIZE);
+	copy_arr(udp_struct.SourceIP, ip_addr, 4);
+	copy_arr(udp_struct.DestIP, ip_pc, 4);
+	
+	udp_struct.UDP_Source_Port = swap16(source_port);
+	udp_struct.UDP_Dest_Port = swap16((response[I_UDP_SRC_PORT]<<8) + response[I_UDP_SRC_PORT+1]);;
+	udp_struct.UDP_Length = swap16(UDP_SIZE + len_of_data);
+	
+	copy_arr(udp_struct.UDP_Data, data, len_of_data);
+	
+	/* check sum */
+	udp_struct.UDP_Checksum = 0x0000;
+	udp_struct.UDP_Checksum = udp_checksum((u08*)&udp_struct.SourceIP, UDP_SIZE + len_of_data + 8);
+	enc28j60PacketSend(I_UDP_DATA + len_of_data, (u08*)&udp_struct);
+}

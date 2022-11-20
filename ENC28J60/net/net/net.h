@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-#define DEBUG
+// #define DEBUG
 
 /* IP */
 
@@ -15,7 +15,9 @@
 #define IPV4_TIME_TO_LIVE					128
 #define IPV4_PROTOCOL_ICMP				0x01	// 1
 #define IPV4_PROTOCOL_UDP					0x11	// 17
-#define IPV4_SIZE									28
+
+#define ETHERNET_II_SIZE					14
+#define IPV4_SIZE									20
 
 #define I_IPV4_MAC_SOURCE					0
 #define I_IPV4_MAC_DEST						6
@@ -32,8 +34,15 @@
 #define I_IPV4_SOURCE_IP				26
 #define I_IPV4_DEST_IP					30
 
+typedef enum{
+	NONE = 0,
+	ARP = 1,
+	ICMP = 2,
+	UDP = 3
+}ProtocolIP;
+
 extern bool net_analysis(void);
-extern void net_init(u08 mymac[6], u08 myip[4], u08 myport);
+extern void net_init(u08 mymac[6], u08 myip[4], u16 myport);
 
 /* ARP */
 
@@ -60,20 +69,20 @@ extern void net_init(u08 mymac[6], u08 myip[4], u08 myport);
 typedef struct{
 	u08 MAC_dest[6];             				// MAC destination
 	u08 MAC_source[6];                  // MAC source
-	u16 Ethernet_type;                 // Ethernet type
+	u16 Ethernet_type;                 	// Ethernet type
 	
-	u16 Hardwave_type;                 // Hardwave type
-	u16 Protocol_type;                 // Protocol type (ARP)
-	u16 Size;                          // Size
-	u16 Opcode;                        // Opcode
+	u16 Hardwave_type;                 	// Hardwave type
+	u16 Protocol_type;                 	// Protocol type (ARP)
+	u16 Size;                          	// Size
+	u16 Opcode;                        	// Opcode
 	u08 MAC_sender[6];                  // Sender MAC
 	u08 IP_sender[4];                   // Sender IP
 	u08 MAC_target[6];                  // Target MAC
 	u08 IP_target[4];                   // Target IP
 }ARP_Frame;
 
-extern bool net_arp_check_broadcast(u08* ping, u08 len);
-extern void net_arp_reply(u08* ping, u08 len);
+extern bool net_arp_check_broadcast(u08* ping, u16 len);
+extern void net_arp_reply(u08* ping, u16 len);
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout);
 
 /* ICMP */
@@ -95,13 +104,13 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 
 typedef struct{
 	/* It is Ethernet Frame II */
-	u08 MAC_source[6];
 	u08 MAC_dest[6];
+	u08 MAC_source[6];
 	u16 Ethernet_type;
 	/* IP */
 	u08 Header_length; 
 	u08 Services;
-	/* Total length : Header_length - data[] or all - 14 */
+	/* Total length */
 	u16 TotalLength;
 	u16 Identification;
 	u16 Flag;
@@ -116,22 +125,20 @@ typedef struct{
 	u16 ICMP_Checksum; 
 	u16 ICMP_Identification;
 	u16 ICMP_SequenceNumber;
-	u08 ICMP_data[]; 
+	u08 ICMP_Data[255]; 
 }ICMP_Frame;
 
-extern void net_icmp_reply(u08* ping, u08 len);
-extern bool net_icmp_check(u08* ping, u08 len);
-extern void net_icmp_response(u08* data, u08 len);
+extern void net_icmp_reply(u08* ping, u16 len);
+extern bool net_icmp_check(u08* ping, u16 len);
+extern void net_icmp_response(u08* data, u16 len);
 
 /* UDP */
 #define I_UDP_SRC_PORT 			34 // 0x22
 #define I_UDP_DST_PORT 			36 // 0x24
 #define I_UDP_LEN 					38 // 0x26
-
 #define I_UDP_CHECKSUM 			40 // 0x28
 #define I_UDP_DATA 					42 // 0x2A
-
-#define UDP_HEADER_LEN			8
+#define UDP_SIZE						8
 
 typedef struct{
 	/* It is Ethernet Frame II */
@@ -141,7 +148,9 @@ typedef struct{
 	/* IP */
 	u08 Header_length; 
 	u08 Services;
-	/* Total length : Header_length - data[] or all - 14 */
+	/* Total length
+		Form: Header_length - Data
+	*/
 	u16 TotalLength;
 	u16 Identification;
 	u16 Flag;
@@ -155,11 +164,53 @@ typedef struct{
   u16 UDP_Dest_Port;
   u16 UDP_Length;
   u16 UDP_Checksum;
-  u08 UDP_data[];
-}UDP_struct;
+  u08 UDP_Data[255];
+}UDP_Frame;
 
-extern bool net_udp_check(u08* response, u08 len);
-extern void net_udp_reply(u08* response, u08 len);
-extern void net_udp_handle(u08* data, u08 len);
+extern bool net_udp_check(u08* response, u16 len);
+extern void net_udp_reply(u08* ping, u16 len);
+extern void net_udp_handle(u08 num);
+extern void net_udp_request(u08* response, u08* data, u16 len_of_data);
+
+#define TCP_CWR 0x80
+#define TCP_ECE 0x40
+#define TCP_URG 0x20
+#define TCP_ACK 0x10
+#define TCP_PSH 0x08
+#define TCP_RST 0x04
+#define TCP_SYN 0x02
+#define TCP_FIN 0x01
+
+typedef struct{
+	/* It is Ethernet Frame II */
+	u08 MAC_dest[6];
+	u08 MAC_source[6];
+	u16 Ethernet_type;
+	/* IP */
+	u08 Header_length; 
+	u08 Services;
+	u16 TotalLength;
+	u16 Identification;
+	u16 Flag;
+	u08 TimeToLive;
+	u08 Protocol;
+	u16 CheckSum;
+	u08 SourceIP[4];
+	u08 DestIP[4];
+  /* TCP */
+  u16 TCP_Source_Port;
+  u16 TCP_Dest_Port;
+  u32 TCP_Sequence_Number;
+  u32 TCP_Acknowledgement;
+  u08 TCP_Data_Offset;
+  u08 TCP_Flags;
+  u16 TCP_Window;
+  u16 TCP_Checksums;
+  u16 TCP_Urgent_Pointer;
+  u08 TCP_Data[];
+}TCP_struct;
+
+
+//--------------------------------------------------
 
 #endif
