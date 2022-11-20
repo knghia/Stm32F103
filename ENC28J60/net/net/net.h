@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-// #define DEBUG
+#define DEBUG
 
 /* IP */
 
@@ -15,6 +15,7 @@
 #define IPV4_TIME_TO_LIVE					128
 #define IPV4_PROTOCOL_ICMP				0x01	// 1
 #define IPV4_PROTOCOL_UDP					0x11	// 17
+#define IPV4_PROTOCOL_TCP					0x06	// 17
 
 #define ETHERNET_II_SIZE					14
 #define IPV4_SIZE									20
@@ -38,7 +39,8 @@ typedef enum{
 	NONE = 0,
 	ARP = 1,
 	ICMP = 2,
-	UDP = 3
+	UDP = 3,
+	TCP_IP = 4
 }ProtocolIP;
 
 extern bool net_analysis(void);
@@ -130,7 +132,7 @@ typedef struct{
 
 extern void net_icmp_reply(u08* ping, u16 len);
 extern bool net_icmp_check(u08* ping, u16 len);
-extern void net_icmp_response(u08* data, u16 len);
+extern void net_icmp_request(u08* data, u16 len);
 
 /* UDP */
 #define I_UDP_SRC_PORT 			34 // 0x22
@@ -167,10 +169,10 @@ typedef struct{
   u08 UDP_Data[255];
 }UDP_Frame;
 
-extern bool net_udp_check(u08* response, u16 len);
+extern bool net_udp_check(u08* request, u16 len);
 extern void net_udp_reply(u08* ping, u16 len);
 extern void net_udp_handle(u08 num);
-extern void net_udp_request(u08* response, u08* data, u16 len_of_data);
+extern void net_udp_request(u08* request, u08* data, u16 len_of_data);
 
 #define TCP_CWR 0x80
 #define TCP_ECE 0x40
@@ -210,7 +212,7 @@ typedef struct{
   u08 TCP_Data[];
 }TCP_struct;
 
-
-//--------------------------------------------------
+extern bool net_tcp_check(u08* request, u16 len);
+extern void net_tcp_reply(u08* request, u16 len);
 
 #endif

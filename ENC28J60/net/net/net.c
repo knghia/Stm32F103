@@ -29,8 +29,8 @@ volatile u08 rx_buf[BUFFER_SIZE+1] = {0};
 volatile u16 plen = 0;
 
 extern bool net_analysis(void){
-	#ifndef DEBUG
-	static u08 index = 0;
+	#ifdef DEBUG
+		static u08 index = 0;
 	#endif
 	ProtocolIP protocol = NONE;
 	plen = 0;
@@ -50,6 +50,9 @@ extern bool net_analysis(void){
 		}
 		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_UDP){
 			protocol = UDP;
+		}
+		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_TCP){
+			protocol = TCP_IP;
 		}
 		
 		switch (protocol){
@@ -85,6 +88,21 @@ extern bool net_analysis(void){
 					#endif
 					return true;
 				}
+				break;
+			}
+			case TCP_IP:{
+					#ifdef DEBUG
+					index+=1;
+					printf("tcp %d \r\n", index);
+					#endif
+//				if (net_udp_check((u08*)rx_buf, plen) == true){
+//					net_udp_reply((u08*)rx_buf, plen);
+//					#ifdef DEBUG
+//					index+=1;
+//					printf("tcp %d \r\n", index);
+//					#endif
+//					return true;
+//				}
 				break;
 			}
 			default:
@@ -267,47 +285,47 @@ extern void net_icmp_reply(u08* ping, u16 len){
 	enc28j60PacketSend(len, (u08*)&icmp_struct);
 }
 
-extern bool net_udp_check(u08* response, u16 len){
+extern bool net_udp_check(u08* request, u16 len){
 	if (len<41){
 		return false;
 	}
 	/* compare mac addr */
-	if (!com_arr(&response[I_IPV4_MAC_SOURCE], mac_addr, 6)){
+	if (!com_arr(&request[I_IPV4_MAC_SOURCE], mac_addr, 6)){
 			return false;
 	}
 	/* compare mac pc */
-	if (!com_arr(&response[I_IPV4_MAC_DEST], mac_pc, 6)){
+	if (!com_arr(&request[I_IPV4_MAC_DEST], mac_pc, 6)){
 			return false;
 	}
 	/* compare ip pc */
-	if (!com_arr(&response[I_IPV4_SOURCE_IP], ip_pc, 4)){
+	if (!com_arr(&request[I_IPV4_SOURCE_IP], ip_pc, 4)){
 			return false;
 	}
 	/* compare ip addr */
-	if (!com_arr(&response[I_IPV4_DEST_IP], ip_addr, 4)){
+	if (!com_arr(&request[I_IPV4_DEST_IP], ip_addr, 4)){
 			return false;
 	}
 	/* compare port source */
-	u16 port = (response[I_UDP_DST_PORT]<<8) + response[I_UDP_DST_PORT+1];
+	u16 port = (request[I_UDP_DST_PORT]<<8) + request[I_UDP_DST_PORT+1];
 	if (port != source_port){
 			return false;
 	}
 	/* check crc */
 	u16 real_crc, crc, crc_len = 0;
-	real_crc = response[I_UDP_CHECKSUM] + (response[I_UDP_CHECKSUM+1]<<8);
-	response[I_UDP_CHECKSUM] = 0;
-	response[I_UDP_CHECKSUM+1] = 0;
-	crc_len = (response[I_UDP_LEN]<<8) + response[I_UDP_LEN+1] + 8;
-	crc = udp_checksum(&response[I_IPV4_SOURCE_IP], crc_len);
+	real_crc = request[I_UDP_CHECKSUM] + (request[I_UDP_CHECKSUM+1]<<8);
+	request[I_UDP_CHECKSUM] = 0;
+	request[I_UDP_CHECKSUM+1] = 0;
+	crc_len = (request[I_UDP_LEN]<<8) + request[I_UDP_LEN+1] + 8;
+	crc = udp_checksum(&request[I_IPV4_SOURCE_IP], crc_len);
 	
 	if (real_crc != crc){
 		return false;
 	}
 	/* UDP protocol : 0x11 */
-	if (((response[I_IPV4_ETHERNET_TYPE]<<8)+response[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
+	if (((request[I_IPV4_ETHERNET_TYPE]<<8)+request[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
 		return false;
 	}
-	if (response[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
+	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
 		return false;
 	}
 	return true;
@@ -334,17 +352,17 @@ extern void net_udp_reply(u08* ping, u16 len){
 	}
 }
 
-extern void net_udp_request(u08* response, u08* data, u16 len_of_data){
+extern void net_udp_request(u08* request, u08* data, u16 len_of_data){
 	UDP_Frame udp_struct;
-	copy_arr(udp_struct.MAC_dest, &response[6], 6);
-	copy_arr(udp_struct.MAC_source, &response[0], 6);
+	copy_arr(udp_struct.MAC_dest, &request[6], 6);
+	copy_arr(udp_struct.MAC_source, &request[0], 6);
 	
 	udp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
 	
 	udp_struct.Header_length = IPV4_HEADER_LENGTH;
 	udp_struct.Services = IPV4_SERVICES;
 	udp_struct.TotalLength = swap16(IPV4_SIZE + UDP_SIZE	+ len_of_data);
-	udp_struct.Identification = swap16((response[I_IPV4_IDENTIFICATION]<<8) + response[I_IPV4_IDENTIFICATION+1]);
+	udp_struct.Identification = swap16((request[I_IPV4_IDENTIFICATION]<<8) + request[I_IPV4_IDENTIFICATION+1]);
 	udp_struct.Flag = swap16(IPV4_FLAG);
 	udp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
 	udp_struct.Protocol = IPV4_PROTOCOL_UDP;
@@ -354,7 +372,7 @@ extern void net_udp_request(u08* response, u08* data, u16 len_of_data){
 	copy_arr(udp_struct.DestIP, ip_pc, 4);
 	
 	udp_struct.UDP_Source_Port = swap16(source_port);
-	udp_struct.UDP_Dest_Port = swap16((response[I_UDP_SRC_PORT]<<8) + response[I_UDP_SRC_PORT+1]);;
+	udp_struct.UDP_Dest_Port = swap16((request[I_UDP_SRC_PORT]<<8) + request[I_UDP_SRC_PORT+1]);;
 	udp_struct.UDP_Length = swap16(UDP_SIZE + len_of_data);
 	
 	copy_arr(udp_struct.UDP_Data, data, len_of_data);
