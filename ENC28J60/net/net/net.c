@@ -91,18 +91,14 @@ extern bool net_analysis(void){
 				break;
 			}
 			case TCP_IP:{
+				if (net_tcp_ip_check((u08*)rx_buf, plen) == true){
+					net_tcp_ip_reply((u08*)rx_buf, plen);
 					#ifdef DEBUG
 					index+=1;
 					printf("tcp %d \r\n", index);
 					#endif
-//				if (net_udp_check((u08*)rx_buf, plen) == true){
-//					net_udp_reply((u08*)rx_buf, plen);
-//					#ifdef DEBUG
-//					index+=1;
-//					printf("tcp %d \r\n", index);
-//					#endif
-//					return true;
-//				}
+					return true;
+				}
 				break;
 			}
 			default:
@@ -321,10 +317,11 @@ extern bool net_udp_check(u08* request, u16 len){
 	if (real_crc != crc){
 		return false;
 	}
-	/* UDP protocol : 0x11 */
+	
 	if (((request[I_IPV4_ETHERNET_TYPE]<<8)+request[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
 		return false;
 	}
+	/* UDP protocol : 0x11 */
 	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
 		return false;
 	}
@@ -381,4 +378,33 @@ extern void net_udp_request(u08* request, u08* data, u16 len_of_data){
 	udp_struct.UDP_Checksum = 0x0000;
 	udp_struct.UDP_Checksum = udp_checksum((u08*)&udp_struct.SourceIP, UDP_SIZE + len_of_data + 8);
 	enc28j60PacketSend(I_UDP_DATA + len_of_data, (u08*)&udp_struct);
+}
+
+extern bool net_tcp_ip_check(u08* request, u16 len){
+	if (len<41){
+		return false;
+	}
+	/* compare mac addr */
+	if (!com_arr(&request[I_IPV4_MAC_SOURCE], mac_addr, 6)){
+			return false;
+	}
+	/* compare ip addr */
+	if (!com_arr(&request[I_IPV4_DEST_IP], ip_addr, 4)){
+			return false;
+	}
+	/* compare port source */
+	u16 port = (request[I_TCP_DST_PORT]<<8) + request[I_TCP_DST_PORT+1];
+	if (port != source_port){
+			return false;
+	}
+	if (((request[I_IPV4_ETHERNET_TYPE]<<8)+request[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
+		return false;
+	}
+	/* UDP protocol : 0x11 */
+	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
+		return false;
+	}
+	return true;
+}
+extern void net_tcp_ip_reply(u08* request, u16 len){
 }

@@ -174,6 +174,10 @@ extern void net_udp_reply(u08* ping, u16 len);
 extern void net_udp_handle(u08 num);
 extern void net_udp_request(u08* request, u08* data, u16 len_of_data);
 
+/* UDP */
+#define I_TCP_SRC_PORT 			34 // 0x22
+#define I_TCP_DST_PORT 			36 // 0x24
+
 #define TCP_CWR 0x80
 #define TCP_ECE 0x40
 #define TCP_URG 0x20
@@ -212,7 +216,7 @@ typedef struct{
   u08 TCP_Data[];
 }TCP_struct;
 
-extern bool net_tcp_check(u08* request, u16 len);
-extern void net_tcp_reply(u08* request, u16 len);
+extern bool net_tcp_ip_check(u08* request, u16 len);
+extern void net_tcp_ip_reply(u08* request, u16 len);
 
 #endif

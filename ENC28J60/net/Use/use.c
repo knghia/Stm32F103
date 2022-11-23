@@ -7,8 +7,13 @@ extern void setup_io(void){
 	GPIOC->CRH |= 0x00100000;
 }
 
-#define LED_OFF() {GPIOC->ODR |= (1<<13);}
-#define LED_ON() {GPIOC->ODR &=~ (1<<13);}
+#define LED_OFF() 		{GPIOC->ODR |= (1<<13);}
+#define LED_ON() 			{GPIOC->ODR &=~ (1<<13);}
+#define LED_TOGGLE() 	{GPIOC->ODR ^= (1<<13);}
+
+void enc28j60IntCallBack(void){
+	LED_TOGGLE();
+}
 
 extern void net_udp_handle(u08 num){
 	switch (num){

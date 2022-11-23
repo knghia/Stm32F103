@@ -240,24 +240,20 @@
 #define        MAX_FRAMELEN        1500        // (note: maximum ethernet frame length would be 1518)
 //#define MAX_FRAMELEN     600
 
-//SPI1 
-//void	ENC28J60_Init(void);
 u08 enc28j60ReadOp(u08 op, u08 address);
-void 	enc28j60WriteOp(u08 op, u08 address, u08 data);
-void 	enc28j60ReadBuffer(u16 len, u08* data);
-void 	enc28j60WriteBuffer(u16 len, u08* data);
-void 	enc28j60SetBank(u08 address);
+void enc28j60WriteOp(u08 op, u08 address, u08 data);
+void enc28j60ReadBuffer(u16 len, u08* data);
+void enc28j60WriteBuffer(u16 len, u08* data);
+void enc28j60SetBank(u08 address);
 u08 enc28j60Read(u08 address);
-void 	enc28j60Write(u08 address, u08 data);
-void 	enc28j60PhyWrite(u08 address, u16 data);
-void 	enc28j60clkout(u08 clk);
-bool 	enc28j60Init(u08* macaddr);
+void enc28j60Write(u08 address, u08 data);
+void enc28j60PhyWrite(u08 address, u16 data);
+void enc28j60clkout(u08 clk);
+bool enc28j60Init(u08* macaddr);
 u08 enc28j60getrev(void);
-void 	enc28j60PacketSend(u16 len, u08* packet);
+void enc28j60PacketSend(u16 len, u08* packet);
 u16 enc28j60PacketReceive(u16 maxlen, u08* packet);
+void enc28j60IntCallBack(void);
 
-
-//SPI1 
-//INT8U	ENC28J60_ReadWrite(INT8U writedat);
 
 #endif

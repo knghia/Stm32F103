@@ -199,6 +199,12 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, RST_Pin|SPI1_SS_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin : ENC_INT_Pin */
+  GPIO_InitStruct.Pin = ENC_INT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(ENC_INT_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : RST_Pin SPI1_SS_Pin */
   GPIO_InitStruct.Pin = RST_Pin|SPI1_SS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -209,7 +215,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == GPIO_PIN_2){
+		enc28j60IntCallBack();
+	}
+}
 /* USER CODE END 4 */
 
 /**
