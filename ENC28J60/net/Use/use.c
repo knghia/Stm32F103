@@ -12,7 +12,7 @@ extern void setup_io(void){
 #define LED_TOGGLE() 	{GPIOC->ODR ^= (1<<13);}
 
 void enc28j60IntCallBack(void){
-	LED_TOGGLE();
+	printf("interrupt \r\n");
 }
 
 extern void net_udp_handle(u08 num){

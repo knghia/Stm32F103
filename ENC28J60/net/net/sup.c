@@ -24,6 +24,14 @@ extern u16 swap16(u16 data){
 	return ((l<<8) + h);
 }
 
+extern u32 swap32(u32 data){
+	u08 a1 = (data>>24)%0xFF;
+	u08 a2 = (data>>16)%0xFF;
+	u08 a3 = (data>>8)%0xFF;
+	u08 a4 = data%0xFF;
+	return (u32)((a4<<24) + (a3<<16) + (a2<<8) + a1);
+}
+
 u16 base_checksum(u08 *data, u16 len){
 	u32 cs = 0;
 	while(len>1){
@@ -41,11 +49,12 @@ u16 base_checksum(u08 *data, u16 len){
 	return swap16((u16) cs);
 }
 
-extern u16 icmp_checksum(u08 *data, u16 len){
+
+extern u16 ipv4_checksum(u08 *data, u16 len){
 	return base_checksum(data, len);
 }
 
-extern u16 ipv4_checksum(u08 *data, u16 len){
+extern u16 icmp_checksum(u08 *data, u16 len){
 	return base_checksum(data, len);
 }
 
@@ -73,6 +82,23 @@ u32 cs = 0x11 + len - 8;
 
 extern u16 udp_checksum(u08 *data, u16 len){
 	u32 cs = 0x11 + len - 8;
+	while(len>1){
+		cs += (u16) (((u32)*data<<8)|*(data+1));
+		data+=2;
+		len-=2;
+	}
+	if (len){
+		cs += (0xFF & *data)<<8;
+	}
+	while (cs>>16){
+		cs = ((u16)cs+(cs>>16));
+	}
+	cs=~cs;
+	return swap16((u16)cs);
+}
+
+extern u16 tcp_checksum(u08 *data, u16 len){
+	u32 cs = 0x06 + len - 8;
 	while(len>1){
 		cs += (u16) (((u32)*data<<8)|*(data+1));
 		data+=2;

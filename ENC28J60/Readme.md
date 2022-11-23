@@ -69,6 +69,16 @@ typedef struct
 
 # 4. TCP IP
 
++ TCP là giao thức truyền tải hướng kết nối (connection-oriented), nghĩa là phải thực hiện thiết lập kết nối với đầu xa trước khi thực hiện truyền dữ liệu. Tiến trình thiết lập kết nối ở TCP được gọi là tiến trình bắt tay 3 bước (threeway handshake).
+
++ Cung cấp cơ chế báo nhận (Acknowledgement) :Khi A gửi dữ liệu cho B, B nhận được thì gửi gói tin cho A xác nhận là đã nhận. Nếu không nhận được tin xác nhận thì A sẽ gửi cho đến khi B báo nhận thì thôi.
+
++ Cung cấp cơ chế đánh số thứ tự gói tin (sequencing) cho các đơn vị dữ liệu được truyền, sử dụng để ráp các gói tin chính xác ở điểm nhận và loại bỏ gói tin trùng lặp.
+Có các cơ chế điều khiển luồng thích hợp (flow control) để tránh nghẽn xảy ra.
+
++ Hỗ trợ cơ chế full-duplex ( truyền và nhận dữ liệu cùng một lúc)
+Phục hồi dữ liệu bị mất trên đường truyền ( A gửi B mà không thấy xác nhận sẽ gửi lại) .
+
 ![image info](./Image/tcp_ip_frame.png)
 
 ***Source port*** : Số hiệu của cổng tại máy tính gửi
@@ -94,5 +104,11 @@ typedef struct
 ***Options*** Đây là trường tùy chọn. Nếu có thì độ dài là bội số của 32 bít.
 
 Dữ liệu Dữ liệu của gói TCP
+
+# 4.1 Tcp Operation
+
+![image info](./Image/tcp_operation.png)
+
++ ***Bước 1*** : Host A gửi cho B một gói tin có cờ SYN được bật lên, với số thứ tự được đánh là 100. Segment đầu tiên này không chứa phần dữ liệu nên không có phần data, tuy nhiên số lượng byte dữ liệu vẫn được tính là một byte cho hoạt động gửi cờ SYN.
 
 </span>

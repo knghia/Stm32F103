@@ -41,8 +41,8 @@ extern bool net_analysis(void){
 	else{
 		protocol = NONE;
 		rx_buf[plen] = '\0';
-		if(((rx_buf[I_ARP_ETHERNET_TYPE]<<8) + \
-			rx_buf[I_ARP_ETHERNET_TYPE+1]) == ARP_ETHERNET_TYPE){
+		if(((rx_buf[I_ARP_ETHERNET_TYPE_H]<<8) + \
+			rx_buf[I_ARP_ETHERNET_TYPE_L]) == ARP_ETHERNET_TYPE){
 			protocol = ARP;
 		}
 		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_ICMP){
@@ -93,10 +93,6 @@ extern bool net_analysis(void){
 			case TCP_IP:{
 				if (net_tcp_ip_check((u08*)rx_buf, plen) == true){
 					net_tcp_ip_reply((u08*)rx_buf, plen);
-					#ifdef DEBUG
-					index+=1;
-					printf("tcp %d \r\n", index);
-					#endif
 					return true;
 				}
 				break;
@@ -120,11 +116,11 @@ extern bool net_arp_check_broadcast(u08* ping, u16 len){
 		return false;
 	}
 	/* check  protocol IPv4 - 0x0800*/
-	if(((ping[I_ARP_PROTOCOL_TYPE]<<8) + ping[I_ARP_PROTOCOL_TYPE+1]) != IPV4_ETHERNET_TYPE){
+	if(((ping[I_ARP_PROTOCOL_TYPE_H]<<8) + ping[I_ARP_PROTOCOL_TYPE_L]) != IPV4_ETHERNET_TYPE){
 		return false;
 	}
 	/* check  protocol IPv4 - 0x0806*/
-	if(((ping[I_ARP_ETHERNET_TYPE]<<8) + ping[I_ARP_ETHERNET_TYPE+1]) != ARP_ETHERNET_TYPE){
+	if(((ping[I_ARP_ETHERNET_TYPE_H]<<8) + ping[I_ARP_ETHERNET_TYPE_L]) != ARP_ETHERNET_TYPE){
 		return false;
 	}
 	return true;
@@ -183,7 +179,7 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 		len = enc28j60PacketReceive(BUFFER_SIZE, data); 
 		if (len >= 42){
 			/* ARP OPCODE request */
-			u16 arp_opcode = (data[I_ARP_OPCODE]<<8) + data[I_ARP_OPCODE+1];
+			u16 arp_opcode = (data[I_ARP_OPCODE_H]<<8) + data[I_ARP_OPCODE_L];
 			if(arp_opcode == ARP_OPCODE_REPLY){
 				/* compare MAC source */
 				if(com_arr(&data[I_ARP_MAC_TARGET], (u08*)mac_addr, 6)){
@@ -233,9 +229,9 @@ extern bool net_icmp_check(u08* ping, u16 len){
 	}
 	/* check crc */
 	uint16_t real_crc, crc = 0;
-	real_crc = ping[I_ICMP_CHECKSUM] + (ping[I_ICMP_CHECKSUM+1]<<8);
-	ping[I_ICMP_CHECKSUM] = 0;
-	ping[I_ICMP_CHECKSUM+1] = 0;
+	real_crc = ping[I_ICMP_CHECKSUM_H] + (ping[I_ICMP_CHECKSUM_L]<<8);
+	ping[I_ICMP_CHECKSUM_H] = 0;
+	ping[I_ICMP_CHECKSUM_L] = 0;
 	crc = icmp_checksum(&ping[I_ICMP_TYPE], ICMP_SIZE+ len-IPV4_ICMP_SIZE);
 	if(real_crc != crc){
 		return false;
@@ -258,8 +254,8 @@ extern void net_icmp_reply(u08* ping, u16 len){
 	
 	icmp_struct.Header_length = IPV4_HEADER_LENGTH;
 	icmp_struct.Services = IPV4_SERVICES;
-	icmp_struct.TotalLength = swap16((ping[I_IPV4_TOTAL_LENGTH]<<8) + ping[I_IPV4_TOTAL_LENGTH+1]);
-	icmp_struct.Identification = swap16((ping[I_IPV4_IDENTIFICATION]<<8) + ping[I_IPV4_IDENTIFICATION+1]);
+	icmp_struct.TotalLength = swap16((ping[I_IPV4_TOTAL_LENGTH_H]<<8) + ping[I_IPV4_TOTAL_LENGTH_L]);
+	icmp_struct.Identification = swap16((ping[I_IPV4_IDENTIFI_H]<<8) + ping[I_IPV4_IDENTIFI_L]);
 	icmp_struct.Flag = swap16(IPV4_FLAG);
 	icmp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
 	icmp_struct.Protocol = IPV4_PROTOCOL_ICMP;
@@ -272,8 +268,8 @@ extern void net_icmp_reply(u08* ping, u16 len){
 	icmp_struct.ICMP_Type = ICMP_REPLY;
 	icmp_struct.ICMP_Code = ICMP_CODE;
 	icmp_struct.ICMP_Checksum = 0x0000;
-	icmp_struct.ICMP_Identification = swap16((ping[I_ICMP_IDENTIFIER]<<8) + ping[I_ICMP_IDENTIFIER+1]);
-	icmp_struct.ICMP_SequenceNumber = swap16((ping[I_ICMP_SEQUENCE_NUMBER]<<8) + ping[I_ICMP_SEQUENCE_NUMBER+1]);
+	icmp_struct.ICMP_Identification = swap16((ping[I_ICMP_IDENTIFIER_H]<<8) + ping[I_ICMP_IDENTIFIER_L]);
+	icmp_struct.ICMP_SequenceNumber = swap16((ping[I_ICMP_SEQ_NUM_H]<<8) + ping[I_ICMP_SEQ_NUM_L]);
 	copy_arr(icmp_struct.ICMP_Data, &ping[IPV4_ICMP_SIZE], len-IPV4_ICMP_SIZE);
 	
 	icmp_struct.ICMP_Checksum = icmp_checksum((u08*)&(icmp_struct.ICMP_Type), ICMP_SIZE+ len-IPV4_ICMP_SIZE);
@@ -302,16 +298,16 @@ extern bool net_udp_check(u08* request, u16 len){
 			return false;
 	}
 	/* compare port source */
-	u16 port = (request[I_UDP_DST_PORT]<<8) + request[I_UDP_DST_PORT+1];
+	u16 port = (request[I_UDP_DST_PORT_H]<<8) + request[I_UDP_DST_PORT_L];
 	if (port != source_port){
 			return false;
 	}
 	/* check crc */
 	u16 real_crc, crc, crc_len = 0;
-	real_crc = request[I_UDP_CHECKSUM] + (request[I_UDP_CHECKSUM+1]<<8);
-	request[I_UDP_CHECKSUM] = 0;
-	request[I_UDP_CHECKSUM+1] = 0;
-	crc_len = (request[I_UDP_LEN]<<8) + request[I_UDP_LEN+1] + 8;
+	real_crc = request[I_UDP_CHECKSUM_H] + (request[I_UDP_CHECKSUM_L]<<8);
+	request[I_UDP_CHECKSUM_H] = 0;
+	request[I_UDP_CHECKSUM_L] = 0;
+	crc_len = (request[I_UDP_LEN_H]<<8) + request[I_UDP_LEN_L] + 8;
 	crc = udp_checksum(&request[I_IPV4_SOURCE_IP], crc_len);
 	
 	if (real_crc != crc){
@@ -332,20 +328,20 @@ extern void net_udp_reply(u08* ping, u16 len){
 	static u08 udp_data_request[50];
 	static u08 udp_len = 0;
 	
-	udp_len = (ping[I_UDP_LEN]<<8) + ping[I_UDP_LEN+1];
+	udp_len = (ping[I_UDP_LEN_H]<<8) + ping[I_UDP_LEN_L];
 	copy_arr(udp_data_request, &ping[I_UDP_DATA], udp_len);
 	
-	if (com_arr(udp_data_request, (u08*)"LED13=HIGH\r\n", 13)){
+	if (com_arr(udp_data_request, (u08*)"LED13=HIGH\r\n", 12)){
 		net_udp_handle(0);
-		net_udp_request(ping, (u08*)"LED13=HIGH OK\r\n", 16);
+		net_udp_request(ping, (u08*)"LED13=HIGH\r\n", 12);
 	}
-	else if (com_arr(udp_data_request, (u08*)"LED13=LOW\r\n", 12)){
+	else if (com_arr(udp_data_request, (u08*)"LED13=LOW\r\n", 11)){
 		net_udp_handle(1);
-		net_udp_request(ping, (u08*)"LED13=LOW OK\r\n", 15);
+		net_udp_request(ping, (u08*)"LED13=LOW\r\n", 11);
 	}
 	else{
 		net_udp_handle(2);
-		net_udp_request(ping, (u08*)"INCORRECT\r\n", 14);
+		net_udp_request(ping, (u08*)"INCORRECT\r\n", 11);
 	}
 }
 
@@ -358,8 +354,8 @@ extern void net_udp_request(u08* request, u08* data, u16 len_of_data){
 	
 	udp_struct.Header_length = IPV4_HEADER_LENGTH;
 	udp_struct.Services = IPV4_SERVICES;
-	udp_struct.TotalLength = swap16(IPV4_SIZE + UDP_SIZE	+ len_of_data);
-	udp_struct.Identification = swap16((request[I_IPV4_IDENTIFICATION]<<8) + request[I_IPV4_IDENTIFICATION+1]);
+	udp_struct.TotalLength = swap16((request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L]);
+	udp_struct.Identification = swap16((request[I_IPV4_IDENTIFI_H]<<8) + request[I_IPV4_IDENTIFI_L]);
 	udp_struct.Flag = swap16(IPV4_FLAG);
 	udp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
 	udp_struct.Protocol = IPV4_PROTOCOL_UDP;
@@ -369,14 +365,14 @@ extern void net_udp_request(u08* request, u08* data, u16 len_of_data){
 	copy_arr(udp_struct.DestIP, ip_pc, 4);
 	
 	udp_struct.UDP_Source_Port = swap16(source_port);
-	udp_struct.UDP_Dest_Port = swap16((request[I_UDP_SRC_PORT]<<8) + request[I_UDP_SRC_PORT+1]);;
+	udp_struct.UDP_Dest_Port = swap16((request[I_UDP_SRC_PORT_H]<<8) + request[I_UDP_SRC_PORT_L]);;
 	udp_struct.UDP_Length = swap16(UDP_SIZE + len_of_data);
-	
 	copy_arr(udp_struct.UDP_Data, data, len_of_data);
 	
 	/* check sum */
 	udp_struct.UDP_Checksum = 0x0000;
 	udp_struct.UDP_Checksum = udp_checksum((u08*)&udp_struct.SourceIP, UDP_SIZE + len_of_data + 8);
+	
 	enc28j60PacketSend(I_UDP_DATA + len_of_data, (u08*)&udp_struct);
 }
 
@@ -393,18 +389,78 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 			return false;
 	}
 	/* compare port source */
-	u16 port = (request[I_TCP_DST_PORT]<<8) + request[I_TCP_DST_PORT+1];
+	u16 port = (request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L];
 	if (port != source_port){
 			return false;
 	}
 	if (((request[I_IPV4_ETHERNET_TYPE]<<8)+request[I_IPV4_ETHERNET_TYPE+1]) != IPV4_ETHERNET_TYPE){
 		return false;
 	}
-	/* UDP protocol : 0x11 */
-	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_UDP){
+	/* TCP protocol : 0x06 */
+	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_TCP){
 		return false;
 	}
 	return true;
 }
-extern void net_tcp_ip_reply(u08* request, u16 len){
+
+void net_tcp_ip_reply_step_1(u08* request, u16 len){
+	u32 seq_num, total_len = 0;
+	TCP_Frame tcp_struct;
+	copy_arr(tcp_struct.MAC_dest, &request[6], 6);
+	copy_arr(tcp_struct.MAC_source, &request[0], 6);
+	
+	tcp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
+	
+	tcp_struct.Header_length = IPV4_HEADER_LENGTH;
+	tcp_struct.Services = IPV4_SERVICES;
+	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
+	tcp_struct.TotalLength = swap16(total_len);
+	tcp_struct.Identification = swap16((request[I_IPV4_IDENTIFI_H]<<8) + request[I_IPV4_IDENTIFI_L]);
+	tcp_struct.Flag = swap16(IPV4_FLAG);
+	tcp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
+	tcp_struct.Protocol = IPV4_PROTOCOL_TCP;
+	tcp_struct.CheckSum = 0x0000;
+	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
+	copy_arr(tcp_struct.SourceIP, ip_addr, 4);
+	copy_arr(tcp_struct.DestIP, ip_pc, 4);
+	
+	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
+	seq_num =  swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3]);
+	
+	tcp_struct.TCP_Seq_Number = swap32(seq_num+100);
+	tcp_struct.TCP_Ack_Number = swap32(seq_num+1);
+	
+	tcp_struct.TCP_Data_Offset = request[I_TCP_FLAGS_H];
+  tcp_struct.TCP_Flags = TCP_FLAGS_SYN|TCP_FLAGS_ACK;
+  tcp_struct.TCP_Window = swap16((request[I_TCP_WIN_H]<<8) + request[I_TCP_WIN_L]);
+  tcp_struct.TCP_Checksums = 0x0000;
+  tcp_struct.TCP_Urgent_Pointer = 0;
+	
+	copy_arr(tcp_struct.TCP_Data, &request[I_TCP_OPT_MSS_KIND], 12);
+
+	/* check sum */
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)&tcp_struct.SourceIP, total_len - 20 +8);
+	enc28j60PacketSend(len, (u08*)&tcp_struct);
 }
+
+extern void net_tcp_ip_reply(u08* request, u16 len){
+//	#ifdef DEBUG
+//	for(u08 i=0;i<len;i++){
+//		if(i%16 == 0 && i!= 0){
+//			printf("\r\n");
+//		}
+//		printf("%02x ",request[i]);
+//	}
+//	#endif
+	/* Check SYN : step 1*/	
+	u08 syn = request[I_TCP_FLAGS_L];
+	if ((syn&TCP_FLAGS_SYN) != 0 && (syn&TCP_FLAGS_ACK) == 0){
+		net_tcp_ip_reply_step_1(request, len);
+	}
+
+}
+
+
