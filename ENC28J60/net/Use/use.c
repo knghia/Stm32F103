@@ -40,6 +40,6 @@ extern void setup(void){
 }
 
 extern void loop(void){
-		net_analysis();
-		delay_ms(100);
+	net_analysis();
+	delay_ms(100);
 }
