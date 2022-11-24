@@ -403,8 +403,20 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 	return true;
 }
 
-void net_tcp_ip_reply_step_1(u08* request, u16 len){
-	u32 seq_num, total_len = 0;
+void printf_debug(u08* data, u16 len){
+	for(u08 i=0; i<len; i++){
+		if (i%16 == 0 && i>0){
+			printf("\r\n");
+		}
+		printf("%02x ", data[i]);
+	}		
+	printf("\r\n");
+}
+
+volatile u32 seq_num_local, ack_num_local = 0;
+
+void net_tcp_ip_reply_syn(u08* request, u16 len){
+	u32 total_len = 0;
 	TCP_Frame tcp_struct;
 	copy_arr(tcp_struct.MAC_dest, &request[6], 6);
 	copy_arr(tcp_struct.MAC_source, &request[0], 6);
@@ -427,11 +439,12 @@ void net_tcp_ip_reply_step_1(u08* request, u16 len){
 	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
 	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
 	
-	seq_num =  swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
-	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3]);
+	seq_num_local =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + 1;
+	ack_num_local = 0x08101997;
 	
-	tcp_struct.TCP_Seq_Number = swap32(seq_num+100);
-	tcp_struct.TCP_Ack_Number = swap32(seq_num+1);
+	tcp_struct.TCP_Seq_Number = swap32(ack_num_local);
+	tcp_struct.TCP_Ack_Number = swap32(seq_num_local);
 	
 	tcp_struct.TCP_Data_Offset = request[I_TCP_FLAGS_H];
   tcp_struct.TCP_Flags = TCP_FLAGS_SYN|TCP_FLAGS_ACK;
@@ -444,23 +457,89 @@ void net_tcp_ip_reply_step_1(u08* request, u16 len){
 	/* check sum */
 	tcp_struct.TCP_Checksums = tcp_checksum((u08*)&tcp_struct.SourceIP, total_len - 20 +8);
 	enc28j60PacketSend(len, (u08*)&tcp_struct);
+	
+	printf_debug((u08*)&tcp_struct, len);
+	
 }
 
+bool net_tcp_ip_reply_ack(u08* request, u16 len){
+	u32 seq_num, ack_num = 0;
+	seq_num =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3];
+
+	ack_num =  (request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3];
+
+	if (seq_num == ack_num_local && ack_num == (seq_num_local+1)){
+		return true;
+	}
+	return false;
+}
+
+void net_tcp_ip_reply_fin_ack(u08* request, u16 len){
+	u32 total_len = 0;
+	TCP_Frame* tcp_struct = (TCP_Frame*)request;
+	copy_arr(tcp_struct->MAC_dest, &request[6], 0);
+	copy_arr(tcp_struct->MAC_source, &request[0], 6);
+
+	tcp_struct->CheckSum = 0x0000;
+	tcp_struct->CheckSum = ipv4_checksum((u08 *)tcp_struct->Header_length, IPV4_SIZE);
+	copy_arr(tcp_struct->SourceIP, ip_addr, 4);
+	copy_arr(tcp_struct->DestIP, ip_pc, 4);
+	
+	tcp_struct->TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+	tcp_struct->TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
+	seq_num_local =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3];
+	
+	tcp_struct->TCP_Seq_Number = swap32(ack_num_local);
+	tcp_struct->TCP_Ack_Number = swap32(seq_num_local);
+
+  tcp_struct->TCP_Flags = TCP_FLAGS_ACK;
+	/* check sum */
+	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
+  tcp_struct->TCP_Checksums = 0x0000;
+	tcp_struct->TCP_Checksums = tcp_checksum((u08*)tcp_struct->SourceIP, total_len - 20 +8);
+	enc28j60PacketSend(len, (u08*)tcp_struct);
+	
+}
+
+typedef enum{
+	TCP_SYN_NONE = 0,
+	TCP_SYN_SYN_1 = 1,
+	TCP_SYN_SYN_2 = 2,
+	TCP_SYN_END_1 = 3,
+	TCP_SYN_END_2 = 4
+}TCP_Step;
+
 extern void net_tcp_ip_reply(u08* request, u16 len){
-//	#ifdef DEBUG
-//	for(u08 i=0;i<len;i++){
-//		if(i%16 == 0 && i!= 0){
-//			printf("\r\n");
-//		}
-//		printf("%02x ",request[i]);
-//	}
-//	#endif
+	static TCP_Step tcp_step = TCP_SYN_NONE;
+	static bool threeway_handshake = false;
 	/* Check SYN : step 1*/	
 	u08 syn = request[I_TCP_FLAGS_L];
 	if ((syn&TCP_FLAGS_SYN) != 0 && (syn&TCP_FLAGS_ACK) == 0){
-		net_tcp_ip_reply_step_1(request, len);
+		net_tcp_ip_reply_syn(request, len);
+		tcp_step = TCP_SYN_SYN_1;
+		return;
 	}
-
+	/* Check SYN : step 3*/	
+	if ((syn&TCP_FLAGS_SYN) == 0 && (syn&TCP_FLAGS_ACK) != 0){
+		if (net_tcp_ip_reply_ack(request, len)){
+			threeway_handshake = true; 
+			tcp_step = TCP_SYN_SYN_2;
+		}
+		else{
+			threeway_handshake = false;
+		}
+		return;
+	}
+	/* End */
+	if (threeway_handshake == true){
+		if ((syn&TCP_FLAGS_FIN) != 0 && (syn&TCP_FLAGS_ACK) == 0){
+			net_tcp_ip_reply_fin_ack(request, len);
+			tcp_step = TCP_SYN_END_1;
+			return;
+		}
+	}
 }
-
-

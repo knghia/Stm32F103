@@ -35,7 +35,6 @@ extern "C" {
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 #define u08 uint8_t
 #define u16 uint16_t
@@ -43,10 +42,10 @@ extern "C" {
 #define delay_ms(t) HAL_Delay(t)
 
 #include "main.h"
-#include "sup.h"
-#include "net.h"
-#include "spi.h"
-#include "enc28j60.h"
+#include "w5500_spi.h"
+#include "w5500.h"
+#include "socket.h"
+#include "wizchip_conf.h"
 #include "use.h"
 /* USER CODE END Includes */
 
@@ -73,8 +72,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ENC_INT_Pin GPIO_PIN_2
-#define ENC_INT_GPIO_Port GPIOA
 #define RST_Pin GPIO_PIN_3
 #define RST_GPIO_Port GPIOA
 #define SPI1_SS_Pin GPIO_PIN_4
