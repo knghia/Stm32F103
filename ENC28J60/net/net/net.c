@@ -127,15 +127,17 @@ extern bool net_arp_check_broadcast(u08* ping, u16 len){
 }
 
 extern void net_arp_reply(u08* ping, u16 len){
-	ARP_Frame* arp_data = (ARP_Frame*)ping;
-	copy_arr(arp_data->MAC_dest, &ping[I_ARP_MAC_SENDER], 0);
-	copy_arr(arp_data->MAC_source, mac_addr, 6);
-	arp_data->Opcode = swap16(ARP_OPCODE_REPLY);
-	copy_arr(arp_data->MAC_sender, mac_addr, 6);
-	copy_arr(arp_data->IP_sender, ip_addr, 4);
-	copy_arr(arp_data->MAC_target, &ping[I_AdRP_MAC_SENDER], 6);
-	copy_arr(arp_data->IP_target, &ping[I_ARP_MAC_TARGET], 4);
-	enc28j60PacketSend(ARP_PACKET_LEN, (u08*)arp_data);
+	ARP_Frame arp_data;
+	copy_arr((u08*)&arp_data, ping, len);
+	
+	copy_arr(arp_data.MAC_dest, &ping[6], 6);
+	copy_arr(arp_data.MAC_source, &ping[0], 6);
+	arp_data.Opcode = swap16(ARP_OPCODE_REPLY);
+	copy_arr(arp_data.MAC_sender, mac_addr, 6);
+	copy_arr(arp_data.IP_sender, ip_addr, 4);
+	copy_arr(arp_data.MAC_target, &ping[I_ARP_MAC_SENDER], 6);
+	copy_arr(arp_data.IP_target, &ping[I_ARP_MAC_TARGET], 4);
+	net_send_frame(ARP_PACKET_LEN, (u08*)&arp_data);
 }
 
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout){
@@ -167,7 +169,7 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 	copy_arr(arp_struct.IP_target, ip_target, 4);
 
 	while(timeout--){
-		enc28j60PacketSend(ARP_PACKET_LEN, (u08 *)&arp_struct);
+		net_send_frame(ARP_PACKET_LEN, (u08 *)&arp_struct);
 		delay_ms(500);
 		len = enc28j60PacketReceive(BUFFER_SIZE, data); 
 		if (len >= 42){
@@ -179,11 +181,6 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 					/* compare IP source */
 					if(com_arr(&data[I_ARP_IP_TARGET], (u08*)ip_addr, 4)){
 						copy_arr(mac_target, &data[I_ARP_MAC_SENDER], 6);
-						#ifdef DEBUG
-							printf("MAC: %02x %02x %02x %02x %02x %02x\r\n", \
-						mac_target[0], mac_target[1], mac_target[2], \
-						mac_target[3], mac_target[4], mac_target[5]);
-						#endif
 						return true;
 					}
 				}
@@ -241,44 +238,19 @@ extern bool net_icmp_check(u08* ping, u16 len){
 
 extern void net_icmp_reply(u08* ping, u16 len){
 	ICMP_Frame icmp_struct;
+	copy_arr((u08*)&icmp_struct, ping, len);
+	
 	copy_arr(icmp_struct.MAC_dest, &ping[6], 6);
 	copy_arr(icmp_struct.MAC_source,  &ping[0], 6);
-	icmp_struct.Ethernet_type = swap16(IPV4_ETHERNET_TYPE);
-	
-	icmp_struct.Header_length = IPV4_HEADER_LENGTH;
-	icmp_struct.Services = IPV4_SERVICES;
-	icmp_struct.TotalLength = swap16((ping[I_IPV4_TOTAL_LENGTH_H]<<8) + ping[I_IPV4_TOTAL_LENGTH_L]);
-	icmp_struct.Identification = swap16((ping[I_IPV4_TOTAL_LENGTH_H]<<8) + ping[I_IPV4_TOTAL_LENGTH_L]);
-	icmp_struct.Flag = swap16(IPV4_FLAG);
-	icmp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
-	icmp_struct.Protocol = IPV4_PROTOCOL_ICMP;
 	icmp_struct.CheckSum = 0x0000;
 	icmp_struct.CheckSum = ipv4_checksum((u08 *)&icmp_struct.Header_length, IPV4_SIZE);
-
 	copy_arr(icmp_struct.SourceIP, &ping[I_IPV4_DEST_IP], 4);
 	copy_arr(icmp_struct.DestIP, &ping[I_IPV4_SOURCE_IP], 4);
-
 	icmp_struct.ICMP_Type = ICMP_REPLY;
-	icmp_struct.ICMP_Code = ICMP_CODE;
 	icmp_struct.ICMP_Checksum = 0x0000;
-	icmp_struct.ICMP_Identification = swap16((ping[I_ICMP_IDENTIFIER_H]<<8) + ping[I_ICMP_IDENTIFIER_L]);
-	icmp_struct.ICMP_SequenceNumber = swap16((ping[I_ICMP_SEQ_NUM_H]<<8) + ping[I_ICMP_SEQ_NUM_L]);
 	copy_arr(icmp_struct.ICMP_Data, &ping[IPV4_ICMP_SIZE], len-IPV4_ICMP_SIZE);
-	
 	icmp_struct.ICMP_Checksum = icmp_checksum((u08*)&(icmp_struct.ICMP_Type), ICMP_SIZE+ len-IPV4_ICMP_SIZE);
-
-	enc28j60PacketSend(len, (u08*)&icmp_struct);
-	ICMP_Frame* icmp_struct = (ICMP_Frame*)ping;
-	copy_arr(icmp_struct->MAC_dest, &ping[6], 0);
-	copy_arr(icmp_struct->MAC_source,  &ping[0], 6);
-	icmp_struct->CheckSum = 0x0000;
-	icmp_struct->CheckSum = ipv4_checksum((u08 *)icmp_struct->Header_length, IPV4_SIZE);
-	copy_arr(icmp_struct->SourceIP, ip_addr, 4);
-	copy_arr(icmp_struct->DestIP, ip_pc, 4);
-	icmp_struct->ICMP_Checksum = 0x0000;
-	copy_arr(icmp_struct->ICMP_Data, &ping[IPV4_ICMP_SIZE], len-IPV4_ICMP_SIZE);
-	icmp_struct->ICMP_Checksum = icmp_checksum((u08*)icmp_struct->ICMP_Type, ICMP_SIZE+ len-IPV4_ICMP_SIZE);
-	enc28j60PacketSend(len, (u08*)icmp_struct);
+	net_send_frame(len, (u08*)&icmp_struct);
 }
 
 extern bool net_udp_check(u08* request, u16 len){
@@ -328,60 +300,45 @@ extern bool net_udp_check(u08* request, u16 len){
 	return true;
 }
 
-extern void net_udp_reply(u08* ping, u16 len){
-	static u08 udp_data_request[50];
-	static u08 udp_len = 0;
-	
-	udp_len = (ping[I_UDP_LEN_H]<<8) + ping[I_UDP_LEN_L];
-	copy_arr(udp_data_request, &ping[I_UDP_DATA], udp_len);
-	
-	if (com_arr(udp_data_request, (u08*)"LED13=HIGH\r\n", 12)){
+extern void net_udp_reply(u08* data, u16 len){
+	if (com_arr(&data[I_UDP_DATA], (u08*)"LED13=HIGH\r\n", 12)){
 		net_udp_handle(0);
-		net_udp_request(ping, (u08*)"LED13=HIGH\r\n", 12);
+		net_udp_request(data, len, (u08*)"LED13=HIGH\r\n", 12);
 	}
-	else if (com_arr(udp_data_request, (u08*)"LED13=LOW\r\n", 11)){
+	else if (com_arr(&data[I_UDP_DATA], (u08*)"LED13=LOW\r\n", 11)){
 		net_udp_handle(1);
-		net_udp_request(ping, (u08*)"LED13=LOW\r\n", 11);
+		net_udp_request(data, len, (u08*)"LED13=LOW\r\n", 11);
 	}
 	else{
 		net_udp_handle(2);
-		net_udp_request(ping, (u08*)"INCORRECT\r\n", 11);
+		net_udp_request(data, len, (u08*)"INCORRECT\r\n", 11);
 	}
 }
 
-extern void net_udp_request(u08* request, u08* data, u16 len_of_data){
-	UDP_Frame* udp_struct = (UDP_Frame*)request;
-	copy_arr(udp_struct->MAC_dest, &request[6], 0);
-	copy_arr(udp_struct->MAC_source, &request[0], 6);
+extern void net_udp_request(u08* request, u08 len, u08* data, u16 len_of_data){
+	UDP_Frame udp_struct;
+	copy_arr((u08*)&udp_struct, request, len);
 	
-	udp_struct->CheckSum = 0x0000;
-	udp_struct->CheckSum = ipv4_checksum((u08 *)udp_struct->Header_length, IPV4_SIZE);
-	copy_arr(udp_struct->SourceIP, ip_addr, 4);
-	copy_arr(udp_struct->DestIP, ip_pc, 4);
+	copy_arr(udp_struct.MAC_dest, &request[6], 6);
+	copy_arr(udp_struct.MAC_source, &request[0], 6);
 	
-	udp_struct.Header_length = IPV4_HEADER_LENGTH;
-	udp_struct.Services = IPV4_SERVICES;
+	udp_struct.CheckSum = 0x0000;
+	udp_struct.CheckSum = ipv4_checksum((u08 *)&udp_struct.Header_length, IPV4_SIZE);
 	udp_struct.TotalLength = swap16(IPV4_SIZE + UDP_SIZE	+ len_of_data);
-	udp_struct.Identification = swap16((request[I_IPV4_IDENTIFI_H]<<8) + request[I_IPV4_IDENTIFI_L+1]);
-	udp_struct.Flag = swap16(IPV4_FLAG);
-	udp_struct.TimeToLive = IPV4_TIME_TO_LIVE;
-	udp_struct.Protocol = IPV4_PROTOCOL_UDP;
 	udp_struct.CheckSum = 0x0000;
 	udp_struct.CheckSum = ipv4_checksum((u08 *)&udp_struct.Header_length, IPV4_SIZE);
 	copy_arr(udp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
 	copy_arr(udp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
 	
 	udp_struct.UDP_Source_Port = swap16(source_port);
-	udp_struct.UDP_Dest_Port = swap16((request[I_UDP_SRC_PORT_H]<<8) + request[I_UDP_SRC_PORT_L]);;
+	udp_struct.UDP_Dest_Port = swap16((request[I_UDP_SRC_PORT_H]<<8) + request[I_UDP_SRC_PORT_L]);
 	udp_struct.UDP_Length = swap16(UDP_SIZE + len_of_data);
-	
 	copy_arr(udp_struct.UDP_Data, data, len_of_data);
 	
 	/* check sum */
-	udp_struct->UDP_Checksum = 0x0000;
-	udp_struct->UDP_Checksum = udp_checksum((u08*)udp_struct->SourceIP, UDP_SIZE + len_of_data + 8);
-	
-	enc28j60PacketSend(I_UDP_DATA + len_of_data, (u08*)udp_struct);	
+	udp_struct.UDP_Checksum = 0x0000;
+	udp_struct.UDP_Checksum = udp_checksum((u08*)udp_struct.SourceIP, UDP_SIZE + len_of_data + 8);
+	net_send_frame(I_UDP_DATA + len_of_data, (u08*)&udp_struct);	
 }
 
 extern bool net_tcp_ip_check(u08* request, u16 len){
@@ -411,25 +368,12 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 	return true;
 }
 
-void printf_debug(u08* data, u16 len){
-	for(u08 i=0; i<len; i++){
-		if (i%16 == 0 && i>0){
-			printf("\r\n");
-		}
-		printf("%02x ", data[i]);
-	}		
-	printf("\r\n");
-}
-
 volatile u32 seq_num_local, ack_num_local = 0;
 
 void net_tcp_ip_reply_syn(u08* request, u16 len){
 	u32 total_len = 0;
 	TCP_Frame tcp_struct;
 	copy_arr((u08*)&tcp_struct, request, len);
-	
-	printf("1 \r\n");
-	printf_debug((u08*)&tcp_struct, len);
 	
 	copy_arr(tcp_struct.MAC_dest, &request[6], 6);
 	copy_arr(tcp_struct.MAC_source, &request[0], 6);
@@ -452,6 +396,9 @@ void net_tcp_ip_reply_syn(u08* request, u16 len){
 
 	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num_local, 4);
 	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num_local, 4);
+	
+	seq_num_local = swap32(seq_num_local);
+	ack_num_local = swap32(ack_num_local);
 
   tcp_struct.TCP_Flags = TCP_FLAGS_SYN|TCP_FLAGS_ACK;
   tcp_struct.TCP_Window = swap16((request[I_TCP_WIN_H]<<8) + request[I_TCP_WIN_L]);
@@ -459,44 +406,7 @@ void net_tcp_ip_reply_syn(u08* request, u16 len){
   tcp_struct.TCP_Checksums = 0x0000;
 	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 
-	enc28j60PacketSend(len, (u08*)&tcp_struct);
-	
-	printf("2 \r\n");
-	printf_debug((u08*)&tcp_struct, len);
-}
-
-bool net_tcp_ip_reply_ack(u08* request, u16 len){
-
-	/* check sum */
-
-void net_tcp_ip_reply_syn(u08* request, u16 len){
-	u32 total_len = 0;
-	TCP_Frame* tcp_struct = (TCP_Frame*)request;
-	copy_arr(tcp_struct->MAC_dest, &request[6], 0);
-	copy_arr(tcp_struct->MAC_source, &request[0], 6);
-
-	tcp_struct->CheckSum = 0x0000;
-	tcp_struct->CheckSum = ipv4_checksum((u08 *)tcp_struct->Header_length, IPV4_SIZE);
-	copy_arr(tcp_struct->SourceIP, ip_addr, 4);
-	copy_arr(tcp_struct->DestIP, ip_pc, 4);
-	
-	tcp_struct->TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
-	tcp_struct->TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
-	
-	seq_num_local =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
-	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + 1;
-	
-	tcp_struct->TCP_Seq_Number = swap32(0x08101997);
-	tcp_struct->TCP_Ack_Number = swap32(seq_num_local);
-	
-	tcp_struct->TCP_Data_Offset = request[I_TCP_FLAGS_H];
-  	tcp_struct->TCP_Flags = TCP_FLAGS_SYN|TCP_FLAGS_ACK;
-	/* check sum */
-	tcp_struct.TCP_Checksums = tcp_checksum((u08*)&tcp_struct.SourceIP, total_len - 20 +8);
-	enc28j60PacketSend(len, (u08*)&tcp_struct);
-	
-	printf_debug((u08*)&tcp_struct, len);
-	
+	net_send_frame(len, (u08*)&tcp_struct);
 }
 
 bool net_tcp_ip_reply_ack(u08* request, u16 len){
@@ -506,8 +416,8 @@ bool net_tcp_ip_reply_ack(u08* request, u16 len){
 
 	ack_num = (request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
 	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3];
-	
-	if (seq_num == ack_num_local && ack_num == (seq_num_local+1)){
+
+	if (seq_num_local == seq_num && (ack_num_local+1) == ack_num){
 		return true;
 	}
 	return false;
@@ -515,55 +425,230 @@ bool net_tcp_ip_reply_ack(u08* request, u16 len){
 
 void net_tcp_ip_reply_fin_ack(u08* request, u16 len){
 	u32 total_len = 0;
-	TCP_Frame* tcp_struct = (TCP_Frame*)request;
-	copy_arr(tcp_struct->MAC_dest, &request[6], 0);
-	copy_arr(tcp_struct->MAC_source, &request[0], 6);
+	
+	u32 seq_num, ack_num = 0;
+	
+	TCP_Frame tcp_struct;
+	copy_arr((u08*)&tcp_struct, request, len);
+	
+	copy_arr(tcp_struct.MAC_dest, &request[6], 6);
+	copy_arr(tcp_struct.MAC_source, &request[0], 6);
 
-	tcp_struct->CheckSum = 0x0000;
-	tcp_struct->CheckSum = ipv4_checksum((u08 *)tcp_struct->Header_length, IPV4_SIZE);
-	copy_arr(tcp_struct->SourceIP, ip_addr, 4);
-	copy_arr(tcp_struct->DestIP, ip_pc, 4);
+	tcp_struct.CheckSum = 0x0000;
+	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
 	
-	tcp_struct->TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
-	tcp_struct->TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
+	copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
 	
-	seq_num_local =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
+	seq_num =  (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
 	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3];
+	ack_num = (request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3];
 	
-	tcp_struct->TCP_Seq_Number = swap32(ack_num_local);
-	tcp_struct->TCP_Ack_Number = swap32(seq_num_local);
+	seq_num = swap32(seq_num);
+	ack_num = swap32(ack_num+1);
 
-  	tcp_struct->TCP_Flags = TCP_FLAGS_ACK;
-	/* check sum */
+	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
+	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
+
+  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+
 	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
-  	tcp_struct->TCP_Checksums = 0x0000;
-	tcp_struct->TCP_Checksums = tcp_checksum((u08*)tcp_struct->SourceIP, total_len - 20 +8);
-	enc28j60PacketSend(len, (u08*)tcp_struct);
+  tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
+
+	net_send_frame(54, (u08*)&tcp_struct);
 }
 
 typedef enum{
 	TCP_SYN_NONE = 0,
-	TCP_SYN_SYN_1 = 1,
-	TCP_SYN_SYN_2 = 2,
+	TCP_SYN_SYN = 1,
+	TCP_SYN_ACK = 2,
 	TCP_SYN_END_1 = 3,
 	TCP_SYN_END_2 = 4
 }TCP_Step;
 
+void printf_debug(u08* data, u16 len){
+	for(u08 i=0; i<len; i++){
+		if (i%16 == 0 && i>0){
+			printf("\r\n");
+		}
+		printf("%02x ", data[i]);
+	}		
+	printf("\r\n");
+}
+
 extern void net_tcp_ip_reply(u08* request, u16 len){
-	/* Check SYN : step 1*/	
+	/* Check SYN */
+	static TCP_Step tcp_step = TCP_SYN_NONE;
+	
 	u08 syn = request[I_TCP_FLAGS_L];
-	if ((syn&TCP_FLAGS_SYN) != 0 && (syn&TCP_FLAGS_ACK) == 0){
-		net_tcp_ip_reply_syn(request, len);
-		return;
+	if (tcp_step == TCP_SYN_NONE){
+		if (syn == TCP_FLAGS_SYN){
+			net_tcp_ip_reply_syn(request, len);
+			printf("tcp syn \r\n");
+			tcp_step = TCP_SYN_SYN;
+			return;
+		}
 	}
-	/* Check SYN : step 3*/	
-	if ((syn&TCP_FLAGS_SYN) == 0 && (syn&TCP_FLAGS_ACK) != 0){
-		printf("tcp ack \r\n");
+	/* Check ACK */
+	if (tcp_step == TCP_SYN_SYN){
+		if (syn == TCP_FLAGS_ACK){
+			if (net_tcp_ip_reply_ack(request, len)){
+				printf("tcp ack \r\n");
+				tcp_step = TCP_SYN_ACK;
+				return;
+			}
+		}
 	}
-	/* End */
-	if ((syn&TCP_FLAGS_FIN) != 0 && (syn&TCP_FLAGS_ACK) == 0){
-		printf("fin ack \r\n");
-		net_tcp_ip_reply_fin_ack(request, len);
-		return;
+	/* receive */
+	if (tcp_step == TCP_SYN_ACK){
+		if (syn == (TCP_FLAGS_PUSH|TCP_FLAGS_ACK)){
+			printf("tcp ack \r\n");
+			net_tcp_ip_execute(request, len);
+			return;
+		}
+	}
+	
+	if (tcp_step == TCP_SYN_ACK){
+		/* End */
+		if (syn == (TCP_FLAGS_FIN|TCP_FLAGS_ACK)){
+			net_tcp_ip_reply_fin_ack(request, len);
+			printf("tcp fin ack 1\r\n");
+			tcp_step = TCP_SYN_NONE;
+			return;
+		}
 	}
 }
+
+extern void net_tcp_ip_execute(u08* data, u16 len){
+	static u08 tcp_ack = 0;
+	u16 len_of_data = len - TCP_DATA_SIZE;
+	if (com_arr(&data[I_TCP_DATA], (u08*)"LED13=HIGH\r\n", len_of_data)){
+		net_tcp_ip_handle(0);
+		
+		if (tcp_ack == 0){
+			net_tcp_ip_request_ack(data, len, len_of_data);
+			tcp_ack = 1;
+			return;
+		}
+		else{
+			net_tcp_ip_request(data, len, (u08*)"LED13=HIGH\r\n", len_of_data);
+			tcp_ack = 0;
+			return;
+		}
+	}
+	else if (com_arr(&data[I_TCP_DATA], (u08*)"LED13=LOW\r\n", len_of_data)){
+		net_tcp_ip_handle(1);
+		
+		if (tcp_ack == 0){
+			net_tcp_ip_request_ack(data, len, len_of_data);
+			tcp_ack = 1;
+			return;
+		}
+		else{
+			net_tcp_ip_request(data, len, (u08*)"LED13=LOW\r\n", len_of_data);
+			tcp_ack = 0;
+			return;
+		}
+	}
+	else{
+		net_tcp_ip_request(data, len, (u08*)"INCORRECT\r\n", 12);
+	}
+}
+
+extern void net_tcp_ip_request_ack(u08* request, u16 len, u16 len_of_data){
+	u32 total_len = 0;
+	u32 seq_num, ack_num = 0;
+	TCP_Frame tcp_struct;
+	copy_arr((u08*)&tcp_struct, request, len);
+	
+	copy_arr(tcp_struct.MAC_dest, &request[I_ARP_MAC_SOURCE], 6);
+	copy_arr(tcp_struct.MAC_source, &request[I_ARP_MAC_DEST], 6);
+	
+	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE - ETHERNET_II_SIZE);
+
+	tcp_struct.CheckSum = 0x0000;
+	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
+	
+	copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
+	copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
+	
+	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
+	seq_num = (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3];
+	
+	ack_num =  (request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3];
+	
+	seq_num = swap32(seq_num + len_of_data);
+	ack_num = swap32(ack_num);
+
+	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
+	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
+
+  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+	
+	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
+  tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
+
+	net_send_frame(TCP_DATA_SIZE , (u08*)&tcp_struct);
+}
+
+extern void net_tcp_ip_request(u08* request, u08 len, u08* data, u16 len_of_data){
+	u32 total_len = 0;
+	u32 seq_num, ack_num = 0;
+	TCP_Frame tcp_struct;
+	copy_arr((u08*)&tcp_struct, request, len);
+	
+	copy_arr(tcp_struct.MAC_dest, &request[I_ARP_MAC_SOURCE], 6);
+	copy_arr(tcp_struct.MAC_source, &request[I_ARP_MAC_DEST], 6);
+	
+	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE + len_of_data - ETHERNET_II_SIZE);
+
+	tcp_struct.CheckSum = 0x0000;
+	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
+	
+	copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
+	copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
+	
+	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
+	seq_num = (request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3];
+	
+	ack_num =  (request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3];
+	
+	seq_num = swap32(seq_num + len_of_data);
+	ack_num = swap32(ack_num);
+
+	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
+	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
+
+  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+	
+	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
+  tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
+	copy_arr(tcp_struct.TCP_Data , data, len_of_data);
+
+	net_send_frame(TCP_DATA_SIZE + len_of_data, (u08*)&tcp_struct);
+}
+
+
+extern void net_send_frame(u16 len, u08* packet){
+	enc28j60PacketSend(len, packet);
+}
+
+
+
+
+

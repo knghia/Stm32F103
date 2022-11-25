@@ -9,15 +9,9 @@
 
 #define IPV4_ETHERNET_TYPE 				0x0800
 #define IPV4_HEADER_LENGTH				0x45
-<<<<<<< HEAD
 #define IPV4_SERVICES						0x00
 #define IPV4_IDENTIFICATION				0x0810
 #define IPV4_FLAG								0x0000
-=======
-#define IPV4_SERVICES					0x00
-#define IPV4_IDENTIFICATION				0x0810
-#define IPV4_FLAG						0x0000
->>>>>>> 57a98b9ed19472481cedc5980b9f50ab39425e2c
 #define IPV4_TIME_TO_LIVE				128
 #define IPV4_PROTOCOL_ICMP				0x01	// 1
 #define IPV4_PROTOCOL_UDP				0x11	// 17
@@ -28,12 +22,8 @@
 
 #define I_IPV4_MAC_SOURCE				0
 #define I_IPV4_MAC_DEST					6
-<<<<<<< HEAD
-#define I_IPV4_ETHERNET_TYPE_H	12
-#define I_IPV4_ETHERNET_TYPE_L	13
-=======
-#define I_IPV4_ETHERNET_TYPE			12
->>>>>>> 57a98b9ed19472481cedc5980b9f50ab39425e2c
+#define I_IPV4_ETHERNET_TYPE_H			12
+#define I_IPV4_ETHERNET_TYPE_L			13
 
 #define I_IPV4_HARD_LENGTH				14
 #define I_IPV4_SERVICES					15
@@ -58,6 +48,7 @@ typedef enum{
 
 extern bool net_analysis(void);
 extern void net_init(u08 mymac[6], u08 myip[4], u16 myport);
+extern void net_send_frame(u16 len, u08* packet);
 
 /* ARP */
 
@@ -209,26 +200,17 @@ typedef struct{
 }UDP_Frame;
 
 extern bool net_udp_check(u08* request, u16 len);
-extern void net_udp_reply(u08* ping, u16 len);
+extern void net_udp_reply(u08* data, u16 len);
 extern void net_udp_handle(u08 num);
-extern void net_udp_request(u08* request, u08* data, u16 len_of_data);
+extern void net_udp_request(u08* request, u08 len, u08* data, u16 len_of_data);
 
 /* TCP */
-<<<<<<< HEAD
 #define I_TCP_SRC_PORT_H 			34
 #define I_TCP_SRC_PORT_L 			35
 #define I_TCP_DST_PORT_H 			36
 #define I_TCP_DST_PORT_L 			37
 #define I_TCP_SEQ_NUM					38 // 4 bytes
 #define I_TCP_ACK_NUM 				42 // 4 bytes
-=======
-#define I_TCP_SRC_PORT_H 			0x22
-#define I_TCP_SRC_PORT_L 			0x23
-#define I_TCP_DST_PORT_H 			0x24
-#define I_TCP_DST_PORT_L 			0x25
-#define I_TCP_SEQ_NUM					0x26 // 4 bytes
-#define I_TCP_ACK_NUM 				0x2a // 4 bytes
->>>>>>> 57a98b9ed19472481cedc5980b9f50ab39425e2c
 
 /* Flags */
 #define I_TCP_FLAGS_H 				46
@@ -246,20 +228,23 @@ extern void net_udp_request(u08* request, u08* data, u16 len_of_data);
 #define I_TCP_WIN_H					48
 #define I_TCP_WIN_L					49
 
-#define I_TCP_CHECKSUM_H			50
-#define I_TCP_CHECKSUM_L			51
+#define I_TCP_CHECKSUM_H		50
+#define I_TCP_CHECKSUM_L		51
 
-#define I_TCP_URG_POINTER_H			52
-#define I_TCP_URG_POINTER_L			53
+#define I_TCP_URG_POINTER_H	52
+#define I_TCP_URG_POINTER_L	53
 
+/* Data */
+#define I_TCP_DATA					54
+#define TCP_DATA_SIZE				54
 /* Option */
 /* Maximun segment size */
-#define I_TCP_OPT_MSS_KIND			54
+#define I_TCP_OPT_MSS_KIND		54
 #define I_TCP_OPT_MSS_LEN			55
-#define I_TCP_OPT_MSS_VALUE_H		56
-#define I_TCP_OPT_MSS_VALUE_L		57
+#define I_TCP_OPT_MSS_VALUE_H	56
+#define I_TCP_OPT_MSS_VALUE_L	57
 /* No-operation */
-#define I_TCP_OPT_NOP_KIND_1		58
+#define I_TCP_OPT_NOP_KIND_1	58
 /* Window scale */
 #define I_TCP_OPT_WS_KIND			59
 #define I_TCP_OPT_WS_LEN			60
@@ -273,15 +258,15 @@ extern void net_udp_request(u08* request, u08* data, u16 len_of_data);
 #define I_TCP_OPT_SACK_LENN			65
 
 typedef struct{
-	/* It is Ethernet Frame II */
-	u08 MAC_dest[6];
-	u08 MAC_source[6];
-	u16 Ethernet_type;
-	/* IP */
-	u08 Header_length; 
-	u08 Services;
-	/* Total length
-		Form: Header_length - Data
+  /* It is Ethernet Frame II */
+  u08 MAC_dest[6];
+  u08 MAC_source[6];
+  u16 Ethernet_type;
+  /* IP */
+  u08 Header_length; 
+  u08 Services;
+  /* Total length
+  Form: Header_length - Data
 	*/
 	u16 TotalLength;
 	u16 Identification;
@@ -294,13 +279,8 @@ typedef struct{
   /* TCP */
   u16 TCP_Source_Port;
   u16 TCP_Dest_Port;
-<<<<<<< HEAD
   u08 TCP_Seq_Number[4];
   u08 TCP_Ack_Number[4];
-=======
-  u32 TCP_Seq_Number;
-  u32 TCP_Ack_Number;
->>>>>>> 57a98b9ed19472481cedc5980b9f50ab39425e2c
 	u08 TCP_Data_Offset;
   u08 TCP_Flags;
   u16 TCP_Window;
@@ -308,6 +288,13 @@ typedef struct{
   u16 TCP_Urgent_Pointer;
   u08 TCP_Data[255];
 }TCP_Frame;
+
+extern void net_tcp_ip_reply(u08* data, u16 len);
+extern void net_tcp_ip_execute(u08* data, u16 len);
+extern void net_tcp_ip_handle(u08 num);
+
+extern void net_tcp_ip_request_ack(u08* request, u16 len, u16 len_of_data);
+extern void net_tcp_ip_request(u08* request, u08 len, u08* data, u16 len_of_data);
 
 extern bool net_tcp_ip_check(u08* request, u16 len);
 extern void net_tcp_ip_reply(u08* request, u16 len);

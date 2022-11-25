@@ -25,17 +25,10 @@ extern u16 swap16(u16 data){
 }
 
 extern u32 swap32(u32 data){
-<<<<<<< HEAD
 	u08 a1 = (data>>24)&0xFF;
 	u08 a2 = (data>>16)&0xFF;
 	u08 a3 = (data>>8)&0xFF;
 	u08 a4 = data&0xFF;
-=======
-	u08 a1 = (data>>24)%0xFF;
-	u08 a2 = (data>>16)%0xFF;
-	u08 a3 = (data>>8)%0xFF;
-	u08 a4 = data%0xFF;
->>>>>>> 57a98b9ed19472481cedc5980b9f50ab39425e2c
 	return (u32)((a4<<24) + (a3<<16) + (a2<<8) + a1);
 }
 

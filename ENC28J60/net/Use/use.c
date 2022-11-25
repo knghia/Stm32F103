@@ -30,6 +30,21 @@ extern void net_udp_handle(u08 num){
 	}
 }
 
+extern void net_tcp_ip_handle(u08 num){
+	switch (num){
+		case 0:{
+			LED_ON();
+			break;
+		}
+		case 1:{
+			LED_OFF();
+			break;
+		}
+		default:
+			break;
+	}
+}
+
 u08 mymac[6] = {0x08,0x10,0x19,0x97,0x25,0x25};
 u08 myip[4] =  {192,168,137,100};       
 u16 myport = 5004;

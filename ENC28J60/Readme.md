@@ -111,4 +111,11 @@ Dữ liệu Dữ liệu của gói TCP
 
 + ***Bước 1*** : Host A gửi cho B một gói tin có cờ SYN được bật lên, với số thứ tự được đánh là 100. Segment đầu tiên này không chứa phần dữ liệu nên không có phần data, tuy nhiên số lượng byte dữ liệu vẫn được tính là một byte cho hoạt động gửi cờ SYN.
 
+# 4.1 Tcp receive
+
++ **Phản hồi lại ACK cho client**
+
+Khi nhận được gói tin, chúng ta bắt buộc phải phản hồi lại cho client bằng cờ ACK
+
+
 </span>
