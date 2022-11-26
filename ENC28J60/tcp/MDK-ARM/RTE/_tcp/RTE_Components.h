@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'html' 
- * Target:  'net' 
+ * Project: 'net' 
+ * Target:  'tcp' 
  */
 
 #ifndef RTE_COMPONENTS_H

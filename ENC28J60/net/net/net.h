@@ -3,11 +3,12 @@
 
 #include "main.h"
 
-#define DEBUG
-
+// #define DEBUG
+#define BUFFER_SIZE 1500
 /* IP */
 
 #define IPV4_ETHERNET_TYPE 				0x0800
+
 #define IPV4_HEADER_LENGTH				0x45
 #define IPV4_SERVICES						0x00
 #define IPV4_IDENTIFICATION				0x0810
@@ -46,7 +47,7 @@ typedef enum{
 	TCP_IP = 4
 }ProtocolIP;
 
-extern bool net_analysis(void);
+extern bool net_poll(void);
 extern void net_init(u08 mymac[6], u08 myip[4], u16 myport);
 extern void net_send_frame(u16 len, u08* packet);
 

@@ -9,29 +9,27 @@ u08 ip_pc[4] = {192,168,137,10};
 
 extern void net_init(u08 mymac[6], u08 myip[4], u16 myport){
 	u08 debug = 0xFF;
-	/* 1. INIT ENC28J60 */
+	/* INIT ENC28J60 */
 	enc28j60Init(mymac);  
 	debug = enc28j60getrev();  
 	enc28j60PhyWrite(PHLCON, 0x476);
-	// change clkout from 6.25MHz to 12.5MHz   
+	/* change clkout from 6.25MHz to 12.5MHz */
 	enc28j60clkout(2);
-	
-	/* 1. INIT NET */
+	/* INIT NET */
 	source_port = myport;
 	copy_arr(mac_addr, mymac, 6);
 	copy_arr(ip_addr, myip, 4);
-	
 	net_arp_get_mac_ip_pc(mac_pc, ip_pc, 1000);
 }
 
-#define BUFFER_SIZE 1500
-volatile u08 rx_buf[BUFFER_SIZE+1] = {0};
-volatile u16 plen = 0;
+extern bool net_poll(void){
+	static u08 rx_buf[BUFFER_SIZE+1] = {0};
+	static u16 plen = 0;
 
-extern bool net_analysis(void){
 	#ifdef DEBUG
 		static u08 index = 0;
 	#endif
+	
 	ProtocolIP protocol = NONE;
 	plen = 0;
 	plen = enc28j60PacketReceive(BUFFER_SIZE, (u08*)rx_buf);
@@ -60,8 +58,8 @@ extern bool net_analysis(void){
 				if (net_arp_check_broadcast((u08*)rx_buf, plen) == true){
 					net_arp_reply((u08*)rx_buf, plen);
 					#ifdef DEBUG
-					index+=1;
-					printf("arp %d \r\n", index);
+						index+=1;
+						printf("arp %d \r\n", index);
 					#endif
 					return true;
 				}
@@ -289,7 +287,6 @@ extern bool net_udp_check(u08* request, u16 len){
 	if (real_crc != crc){
 		return false;
 	}
-	
 	if (((request[I_IPV4_ETHERNET_TYPE_H]<<8)+request[I_IPV4_ETHERNET_TYPE_L]) != IPV4_ETHERNET_TYPE){
 		return false;
 	}
@@ -633,10 +630,10 @@ extern void net_tcp_ip_request(u08* request, u08 len, u08* data, u16 len_of_data
 	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
 	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
 
-  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+	tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
 	
 	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
-  tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = 0x0000;
 	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 	copy_arr(tcp_struct.TCP_Data , data, len_of_data);
 
