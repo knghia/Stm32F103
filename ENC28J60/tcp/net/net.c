@@ -30,10 +30,6 @@ extern bool net_poll(void){
 	static u08 rx_buf[BUFFER_SIZE+1] = {0};
 	static u16 plen = 0;
 
-	#ifdef DEBUG
-		static u08 index = 0;
-	#endif
-	
 	ProtocolIP protocol = NONE;
 	plen = 0;
 	plen = enc28j60PacketReceive(BUFFER_SIZE, (u08*)rx_buf);
@@ -58,10 +54,6 @@ extern bool net_poll(void){
 			case ARP:{
 				if (net_arp_check_broadcast((u08*)rx_buf, plen) == true){
 					net_arp_reply((u08*)rx_buf, plen);
-					#ifdef DEBUG
-						index+=1;
-						printf("arp %d \r\n", index);
-					#endif
 					return true;
 				}
 				net_arp_reply((u08*)rx_buf, plen);
@@ -70,10 +62,6 @@ extern bool net_poll(void){
 			case ICMP:{
 				if (net_icmp_check((u08*)rx_buf, plen) == true){
 					net_icmp_reply((u08*)rx_buf, plen);
-					#ifdef DEBUG
-					index+=1;
-					printf("icmp %d \r\n", index);
-					#endif
 					return true;
 				}
 				break;
@@ -81,12 +69,6 @@ extern bool net_poll(void){
 			case TCP_IP:{
 				if (net_tcp_ip_check((u08*)rx_buf, plen) == true){
 					net_tcp_ip_reply((u08*)rx_buf, plen);
-					
-					#ifdef DEBUG
-						index+=1;
-						printf("tcp %d \r\n", index);
-					#endif
-					
 					return true;
 				}
 				break;
@@ -279,6 +261,8 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 	return true;
 }
 
+u32 seq_num_local, ack_num_local = 0;
+
 extern void net_tcp_ip_reply(u08* request, u16 len){
 	u32 total_len = 0;
 	u32 seq_num, ack_num = 0;
@@ -313,7 +297,6 @@ extern void net_tcp_ip_reply(u08* request, u16 len){
 			tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 			net_send_frame(len, (u08*)&tcp_struct);
 			
-			printf("tcp syn \r\n");
 			break;
 		}
 		case TCP_FLAGS_ACK:{
@@ -362,7 +345,8 @@ extern void net_tcp_ip_reply(u08* request, u16 len){
 	}
 }
 
-extern void net_tcp_ip_request_ack(u08* request, u16 len, u16 len_of_data){
+extern void net_tcp_ip_response(u08* request, u16 len, u08* data, u16 len_of_data){
+	/* ACK */
 	u32 total_len = 0;
 	u32 seq_num, ack_num = 0;
 	TCP_Frame tcp_struct;
@@ -376,88 +360,52 @@ extern void net_tcp_ip_request_ack(u08* request, u16 len, u16 len_of_data){
 	copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
 	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
 	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
 	seq_num = swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
 	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + len_of_data);
 	ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
 	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
+	 
 	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
 	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
-  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
-	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
-  tcp_struct.TCP_Checksums = 0x0000;
-	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
-	net_send_frame(TCP_DATA_SIZE , (u08*)&tcp_struct);
-}
 
-extern void net_tcp_ip_response(u08* request, u08 len, u08* data, u16 len_of_data){
-	u32 total_len = 0;
-	u32 seq_num, ack_num = 0;
-	TCP_Frame tcp_struct;
-	copy_arr((u08*)&tcp_struct, request, len);
-	copy_arr(tcp_struct.MAC_dest, &request[I_ARP_MAC_SOURCE], 6);
-	copy_arr(tcp_struct.MAC_source, &request[I_ARP_MAC_DEST], 6);
+  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+  tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, 52 - 20 +8);
+	net_send_frame(TCP_DATA_SIZE , (u08*)&tcp_struct);
+	
+	/* PUSH */
 	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE + len_of_data - ETHERNET_II_SIZE);
 	tcp_struct.CheckSum = 0x0000;
 	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
-	copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
-	copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
-	tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
-	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+	
 	seq_num = swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
 	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + len_of_data);
 	ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
 	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
+	
 	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
 	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
-  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
-	total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
-  tcp_struct.TCP_Checksums = 0x0000;
-	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
+	
+	tcp_struct.TCP_Flags = TCP_FLAGS_ACK|TCP_FLAGS_PUSH;
+	tcp_struct.TCP_Checksums = 0x0000;
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, TCP_DATA_SIZE - ETHERNET_II_SIZE + len_of_data - 20 +8);
 	copy_arr(tcp_struct.TCP_Data , data, len_of_data);
 	net_send_frame(TCP_DATA_SIZE + len_of_data, (u08*)&tcp_struct);
 }
 
 void net_tcp_ip_push_handle(u08* request, u16 len){
-	static u08 tcp_ack = 0;
 	u16 len_of_data = len - TCP_DATA_SIZE;
 	if (com_arr(&request[I_TCP_DATA], (u08*)"LED13=HIGH\r\n", len_of_data)){
 		net_tcp_ip_handle(0);
-		if (tcp_ack == 0){
-			net_tcp_ip_request_ack(request, len, len_of_data);
-			tcp_ack = 1;
-			return;
-		}
-		else{
-			net_tcp_ip_response(request, len, (u08*)"LED13=HIGH\r\n", len_of_data);
-			tcp_ack = 0;
-			return;
-		}
+		net_tcp_ip_response(request, len, (u08*)"LED13=HIGH\r\n", len_of_data);
 	}
 	else if (com_arr(&request[I_TCP_DATA], (u08*)"LED13=LOW\r\n", len_of_data)){
 		net_tcp_ip_handle(1);
-		if (tcp_ack == 0){
-			net_tcp_ip_request_ack(request, len, len_of_data);
-			tcp_ack = 1;
-			return;
-		}
-		else{
-			net_tcp_ip_response(request, len, (u08*)"LED13=LOW\r\n", len_of_data);
-			tcp_ack = 0;
-			return;
-		}
+		net_tcp_ip_response(request, len, (u08*)"LED13=LOW\r\n", len_of_data);
 	}
 	else{
-		if (tcp_ack == 0){
-			net_tcp_ip_request_ack(request, len, len_of_data);
-			tcp_ack = 1;
-			return;
-		}
-		else{
-			net_tcp_ip_response(request, len, (u08*)"INCORRECT\r\n", 12);
-			tcp_ack = 0;
-			return;
-		}
-		
+		net_tcp_ip_response(request, len, (u08*)"test123", 7);
 	}
 }
 
