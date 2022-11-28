@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'net' 
- * Target:  'net' 
+ * Project: 'MCU_UART' 
+ * Target:  'MCU_UART' 
  */
 
 #ifndef RTE_COMPONENTS_H
