@@ -16,37 +16,31 @@ void adc_single_continous(void){
 	/* 1. Enable clock GPIOA : ADC 1 PA6 ~ analog mode */
 	RCC->APB2ENR |= (1<<2);
 	GPIOA->CRL &=~ 0xF0000000;
-	
 	/* 2. Enable clock adc 1 */
 	RCC->APB2ENR |= (1<<9);
-	
 	/* 3. Data Alignment RIGHT */
 	ADC1->CR2 &= ~(1<<11);
-	
 	/* 4. sample time : 13.5 */
-	ADC1->SMPR2 &=~(B111<<18);
 	ADC1->SMPR2 |= (2<<18);
-	
-	/* 5. External trigger conversion mode for regular channels */
-	ADC1->CR2 &=~ (1<<20);
-
-  /* 7. Length convert = 1 */
-	ADC1->SQR1 &=~(B1111<<20);
+  /* 5. Length convert = 1 */
 	ADC1->SQR1 |= (0<<20);
-	
-	/* 8. Continuous conversion mode */
+	/* 6. Continuous conversion mode */
 	ADC1->CR2 |= (1<<1);
-	
-	/* 9. Set index */
+	/* 7. Set index */
 	ADC1->SQR3 |= (6<<0);
-
-	/* 10. ADC EOCIE interrupt enable */
+	/* 8. ADC EOCIE interrupt enable */
 	ADC1->CR1 |= (1<<5);
 	NVIC_SetPriority(ADC1_IRQn, 0);
 	NVIC_EnableIRQ(ADC1_IRQn);
-	
-	/* 11. ADC Convert ON */
+	/* 9. ADC Convert ON */
 	ADC1->CR2 |= (1<<0);
+	
+	/* 10. External trigger conversion mode for regular channels */
+	ADC1->CR2 |= (1<<20);
+	/* 11. External event select for regular group */
+	ADC1->CR2 |= (B111<<17);
+	/* 12. Start conversion */
+	ADC1->CR2 |= (1<<22);
 }
 
 u16 adc_value = 0;
@@ -66,4 +60,8 @@ extern void setup(void){
 
 
 extern void loop(void){
+	printf("adc %d \r\n", adc_value);
 }
+
+
+

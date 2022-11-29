@@ -53,7 +53,10 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+__inline int fputc(int c, FILE * stream)
+{
+ return(ITM_SendChar(c)); 
+}
 /* USER CODE END 0 */
 
 /**
@@ -85,7 +88,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-
+	setup();
   /* USER CODE END 2 */
 
   /* Infinite loop */
