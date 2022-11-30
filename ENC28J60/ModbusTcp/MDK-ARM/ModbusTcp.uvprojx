@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;..\ENC28J60;..\ModbusTcp;..\Use</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../Net;../Use;../ENC28J60</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -501,22 +501,17 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>ModbusTcp</GroupName>
+          <GroupName>Use</GroupName>
           <Files>
             <File>
-              <FileName>net.c</FileName>
+              <FileName>use.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\ModbusTcp\net.c</FilePath>
-            </File>
-            <File>
-              <FileName>sup.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\ModbusTcp\sup.c</FilePath>
+              <FilePath>..\Use\use.c</FilePath>
             </File>
           </Files>
         </Group>
         <Group>
-          <GroupName>Enc28j60</GroupName>
+          <GroupName>ENC28J60</GroupName>
           <Files>
             <File>
               <FileName>enc28j60.c</FileName>
@@ -524,19 +519,34 @@
               <FilePath>..\ENC28J60\enc28j60.c</FilePath>
             </File>
             <File>
+              <FileName>enc28j60.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\ENC28J60\enc28j60.h</FilePath>
+            </File>
+            <File>
               <FileName>spi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\ENC28J60\spi.c</FilePath>
             </File>
+            <File>
+              <FileName>spi.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\ENC28J60\spi.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
-          <GroupName>Use</GroupName>
+          <GroupName>Net</GroupName>
           <Files>
             <File>
-              <FileName>use.c</FileName>
+              <FileName>net.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Use\use.c</FilePath>
+              <FilePath>..\Net\net.c</FilePath>
+            </File>
+            <File>
+              <FileName>sup.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Net\sup.c</FilePath>
             </File>
           </Files>
         </Group>

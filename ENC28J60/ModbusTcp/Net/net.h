@@ -50,8 +50,7 @@ typedef enum{
 }ProtocolIP;
 
 extern bool net_poll(void);
-extern void net_init(u08 mymac[6], u08 myip[4], u16 myport);
-extern void net_send_frame(u16 len, u08* packet);
+extern void net_init(u08 mymac[6], u08 myip[4], u16 myport, u08 ip_of_pc[4]);
 
 /* ARP */
 
@@ -103,7 +102,7 @@ typedef struct{
 }ARP_Frame;
 
 extern bool net_arp_check_broadcast(u08* ping, u16 len);
-extern void net_arp_reply(u08* ping, u16 len);
+extern void net_arp_reply(void);
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout);
 
 /* ICMP */
@@ -213,15 +212,15 @@ extern void net_icmp_request(u08* data, u16 len);
 #define I_TCP_OPT_SACK_LENN			65
 
 typedef struct{
-	/* It is Ethernet Frame II */
-	u08 MAC_dest[6];
-	u08 MAC_source[6];
-	u16 Ethernet_type;
-	/* IP */
-	u08 Header_length; 
-	u08 Services;
-	/* Total length
-	Form: Header_length - Data
+  /* It is Ethernet Frame II */
+  u08 MAC_dest[6];
+  u08 MAC_source[6];
+  u16 Ethernet_type;
+  /* IP */
+  u08 Header_length; 
+  u08 Services;
+  /* Total length
+  Form: Header_length - Data
 	*/
 	u16 TotalLength;
 	u16 Identification;
@@ -231,28 +230,20 @@ typedef struct{
 	u16 CheckSum;
 	u08 SourceIP[4];
 	u08 DestIP[4];
-	/* TCP */
-	u16 TCP_Source_Port;
-	u16 TCP_Dest_Port;
-	u08 TCP_Seq_Number[4];
-	u08 TCP_Ack_Number[4];
+  /* TCP */
+  u16 TCP_Source_Port;
+  u16 TCP_Dest_Port;
+  u08 TCP_Seq_Number[4];
+  u08 TCP_Ack_Number[4];
 	u08 TCP_Data_Offset;
-	u08 TCP_Flags;
-	u16 TCP_Window;
-	u16 TCP_Checksums;
-	u16 TCP_Urgent_Pointer;
-	/* Modbus Tcp */
-	u08 TCP_Data[255];
-	// u16 MBTCP_TransIden;
-	// u16 MBTCP_ProtocolIden;
-	// u16 MBTCP_Lenght;
-	// u16 MBTCP_ID;
-	// u16 MBTCP_FC;
-	// u16 MBTCP_Frist_Add;
-	// u16 MBTCP_Number;
+  u08 TCP_Flags;
+  u16 TCP_Window;
+  u16 TCP_Checksums;
+  u16 TCP_Urgent_Pointer;
+  u08 TCP_Data[255];
 }MBTCP_Frame;
 
-#define MAX_RX_LEN		32
+#define MAX_RX_LEN			64
 #define MBTCP_FUNC_04 	4
 #define MBTCP_FUNC_03 	3
 #define MBTCP_FUNC_016 	16
@@ -264,12 +255,13 @@ typedef enum{
 	MBTCP_ADD_ERROR = 3,
 }MBTCP_Error;
 
-extern bool net_mb_tcp_check(u08* request, u16 len);
-extern void net_mb_tcp_reply(u08* request, u16 len);
-extern void net_mb_tcp_handle(u08* request, u16 len);
-extern void net_mb_tcp_response(u08* request, u16 len, u08* data, u16 len_of_data);
+extern bool net_mbtcp_check(u08* request, u16 len);
+extern bool net_mbtcp_reply(u08* request, u16 len);
 
-extern MBTCP_Error net_mb_tcp_input_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len);
-extern MBTCP_Error net_mb_tcp_holding_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len);
+extern void net_mbtcp_push_handle(u08* request, u16 len);
+extern void net_mbtcp_handle(u08* request, u16 len);
+
+__weak MBTCP_Error net_mb_tcp_input_register_cb(u08* data_frame, u16 begin_add, u16 len);
+__weak MBTCP_Error net_mb_tcp_holding_register_cb(u08* data_frame, u16 begin_add, u16 len);
 
 #endif

@@ -42,12 +42,12 @@ extern "C" {
 #define u32 uint32_t
 #define delay_ms(t) HAL_Delay(t)
 
-#include "main.h"
 #include "sup.h"
 #include "net.h"
 #include "spi.h"
 #include "enc28j60.h"
 #include "use.h"
+#include "main.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
