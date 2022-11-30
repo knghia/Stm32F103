@@ -50,8 +50,7 @@ typedef enum{
 }ProtocolIP;
 
 extern bool net_poll(void);
-extern void net_init(u08 mymac[6], u08 myip[4], u16 myport);
-extern void net_send_frame(u16 len, u08* packet);
+extern void net_init(u08 mymac[6], u08 myip[4], u16 myport, u08 ip_of_pc[4]);
 
 /* ARP */
 
@@ -103,7 +102,7 @@ typedef struct{
 }ARP_Frame;
 
 extern bool net_arp_check_broadcast(u08* ping, u16 len);
-extern void net_arp_reply(u08* ping, u16 len);
+extern void net_arp_reply(void);
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout);
 
 /* ICMP */

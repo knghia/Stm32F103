@@ -15,13 +15,14 @@ void enc28j60IntCallBack(void){
 	printf("interrupt \r\n");
 }
 
-u08 mymac[6] = {0x08,0x10,0x19,0x97,0x25,0x25};
-u08 myip[4] =  {192,168,137,100};       
-u16 myport = 5004;
+u08 _mymac[6] = {0x08,0x10,0x19,0x97,0x25,0x25};
+u08 _myip[4] =  {192,168,137,100};       
+u16 _myport = 5004;
+u08 _ip_of_pc[4] =  {192,168,137,10};    
 
 extern void setup(void){
 	setup_io();
-	net_init(mymac, myip, myport);
+	net_init(_mymac, _myip, _myport, _ip_of_pc);
 }
 
 extern void loop(void){
