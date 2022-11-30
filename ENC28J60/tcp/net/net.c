@@ -30,7 +30,6 @@ extern void net_init(u08 mymac[6], u08 myip[4], u16 myport, u08 ip_of_pc[4]){
 extern bool net_poll(void){
 	static u08 rx_buf[BUFFER_SIZE+1] = {0};
 	static u16 plen = 0;
-	static u08 index = 0;
 
 	ProtocolIP protocol = NONE;
 	plen = 0;
@@ -56,8 +55,6 @@ extern bool net_poll(void){
 			case ARP:{
 				if (net_arp_check_broadcast((u08*)rx_buf, plen)){
 					net_arp_reply();
-					index+=1;
-					printf("arp %d \r\n",index);
 					return true;
 				}
 				break;
@@ -65,16 +62,17 @@ extern bool net_poll(void){
 			case ICMP:{
 				if (net_icmp_check((u08*)rx_buf, plen)){
 					net_icmp_reply((u08*)rx_buf, plen);
-					index+=1;
-					printf("icmp %d \r\n",index);
 					return true;
 				}
 				break;
 			}
 			case TCP_IP:{
 				if (net_tcp_ip_check((u08*)rx_buf, plen)){
-					net_tcp_ip_reply((u08*)rx_buf, plen);
-					return true;
+					printf("TCP_IP \r\n");
+					if(net_tcp_ip_reply((u08*)rx_buf, plen)){
+						net_tcp_ip_handle((u08*)rx_buf, plen);
+						return true;
+					}
 				}
 				break;
 			}
@@ -90,55 +88,37 @@ extern bool net_arp_check_broadcast(u08* ping, u16 len){
 		return false;
 	}
 	u08 mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	
-//	if(com_arr(&ping[I_ARP_MAC_DEST], mac, 6) || \
-//		com_arr(&ping[I_ARP_MAC_DEST], mac_addr, 6)){
-			
-	if(com_arr(&ping[I_ARP_MAC_DEST], mac, 6)){
-		if(!com_arr(&ping[I_ARP_IP_TARGET], ip_addr, 4)){
-			return false;
-		}
-		/* check  protocol IPv4 - 0x0800*/
-		if(!(ping[I_ARP_PROTOCOL_TYPE_H] == 0x08 && \
-		 ping[I_ARP_PROTOCOL_TYPE_L] == 0x00)){
-			return false;
-		}
-		/* check  protocol IPv4 - 0x0806*/
-		if(!(ping[I_ARP_ETHERNET_TYPE_H] == 0x08 && \
-		 ping[I_ARP_ETHERNET_TYPE_L] == 0x06)){
-			return false;
-		}
-		return true;
+
+	if(!com_arr(&ping[I_ARP_MAC_DEST], mac, 6)){
+		return false;
 	}
-	return false;
+	if(!com_arr(&ping[I_ARP_IP_TARGET], ip_addr, 4)){
+		return false;
+	}
+	/* check  protocol IPv4 - 0x0800*/
+	if(!(ping[I_ARP_PROTOCOL_TYPE_H] == 0x08 && \
+		ping[I_ARP_PROTOCOL_TYPE_L] == 0x00)){
+		return false;
+	}
+	/* check  protocol IPv4 - 0x0806*/
+	if(!(ping[I_ARP_ETHERNET_TYPE_H] == 0x08 && \
+		ping[I_ARP_ETHERNET_TYPE_L] == 0x06)){
+			return false;
+	}
+	return true;
 }
 
 extern void net_arp_reply(void){
-//	ARP_Frame arp_data;
-
-//	copy_arr(arp_data.MAC_dest, &ping[6], 6);
-//	copy_arr(arp_data.MAC_source, mac_addr, 6);
-//	arp_data.Opcode = swap16(ARP_OPCODE_REPLY);
-//	copy_arr(arp_data.MAC_sender, mac_addr, 6);
-//	copy_arr(arp_data.IP_sender, ip_addr, 4);
-//	copy_arr(arp_data.MAC_target, &ping[I_ARP_MAC_SENDER], 6);
-//	copy_arr(arp_data.IP_target, &ping[I_ARP_IP_SENDER], 4);
-//	enc28j60PacketSend(ARP_PACKET_LEN, (u08*)&arp_data);
-	
 	ARP_Frame arp_data;
-	
 	copy_arr(arp_data.MAC_dest, mac_pc, 6);
 	copy_arr(arp_data.MAC_source, mac_addr, 6);
-	
 	arp_data.Ethernet_type = swap16(ARP_ETHERNET_TYPE);
 	arp_data.Hardwave_type = swap16(ARP_HARDWAVE_TYPE);
 	arp_data.Protocol_type = swap16(ARP_PROTOCOL_TYPE);
 	arp_data.Size = swap16(ARP_SIZE);
 	arp_data.Opcode = swap16(ARP_OPCODE_REQUEST);
-	
 	copy_arr(arp_data.MAC_sender, mac_addr, 6);
 	copy_arr(arp_data.IP_sender, ip_addr, 4);
-	
 	copy_arr(arp_data.MAC_target, mac_pc, 6);
 	copy_arr(arp_data.IP_target, ip_pc, 4);
 	enc28j60PacketSend(ARP_PACKET_LEN, (u08*)&arp_data);
@@ -245,7 +225,6 @@ extern bool net_icmp_check(u08* ping, u16 len){
 extern void net_icmp_reply(u08* ping, u16 len){
 	ICMP_Frame icmp_struct;
 	copy_arr((u08*)&icmp_struct, ping, len);
-	
 	copy_arr(icmp_struct.MAC_dest, &ping[6], 6);
 	copy_arr(icmp_struct.MAC_source,  &ping[0], 6);
 	icmp_struct.CheckSum = 0x0000;
@@ -277,12 +256,12 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 			return false;
 	}
 	/* check  protocol IPv4 - 0x0800*/
-	if(request[I_IPV4_ETHERNET_TYPE_H] == IPV4_ETHERNET_TYPE_H && \
-	 request[I_IPV4_ETHERNET_TYPE_L] != IPV4_ETHERNET_TYPE_L){
+	if(!(request[I_IPV4_ETHERNET_TYPE_H] == 0x08 && \
+	 request[I_IPV4_ETHERNET_TYPE_L] == 0x00)){
 		return false;
 	}
 	/* TCP protocol : 0x06 */
-	if (request[I_IPV4_PROTOCOL] != IPV4_PROTOCOL_TCP){
+	if (!(request[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_TCP)){
 		return false;
 	}
 	return true;
@@ -290,7 +269,7 @@ extern bool net_tcp_ip_check(u08* request, u16 len){
 
 u32 seq_num_local, ack_num_local = 0;
 
-extern void net_tcp_ip_reply(u08* request, u16 len){
+extern bool net_tcp_ip_reply(u08* request, u16 len){
 	u32 total_len = 0;
 	u32 seq_num, ack_num = 0;
 	u08 flags = request[I_TCP_FLAGS_L];
@@ -317,18 +296,16 @@ extern void net_tcp_ip_reply(u08* request, u16 len){
 			copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
 			
 			tcp_struct.TCP_Flags = TCP_FLAGS_SYN|TCP_FLAGS_ACK;
-			tcp_struct.TCP_Window = swap16((request[I_TCP_WIN_H]<<8) + request[I_TCP_WIN_L]);
-			
 			total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
 			tcp_struct.TCP_Checksums = 0x0000;
 			tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 			enc28j60PacketSend(len, (u08*)&tcp_struct);
 			
-			break;
+			return false;
 		}
 		case TCP_FLAGS_ACK:{
 			/* Check ACK */
-			break;
+			return false;
 		}
 		case (TCP_FLAGS_FIN|TCP_FLAGS_ACK):{
 			/* Check fin */
@@ -343,20 +320,20 @@ extern void net_tcp_ip_reply(u08* request, u16 len){
 			
 			seq_num =  swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
 			(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + 1);
-			ack_num = swap32(0x08101997);
+			ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+			(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
 
 			copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
 			copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
 			
 			tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
-			tcp_struct.TCP_Window = swap16((request[I_TCP_WIN_H]<<8) + request[I_TCP_WIN_L]);
-			
 			total_len = (request[I_IPV4_TOTAL_LENGTH_H]<<8) + request[I_IPV4_TOTAL_LENGTH_L];
 			tcp_struct.TCP_Checksums = 0x0000;
 			tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 			enc28j60PacketSend(len, (u08*)&tcp_struct);
 			
 			tcp_struct.TCP_Flags = TCP_FLAGS_FIN|TCP_FLAGS_ACK;
+			
 			tcp_struct.TCP_Checksums = 0x0000;
 			tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, total_len - 20 +8);
 			enc28j60PacketSend(len, (u08*)&tcp_struct);
@@ -365,21 +342,52 @@ extern void net_tcp_ip_reply(u08* request, u16 len){
 		
 		case TCP_FLAGS_ACK|TCP_FLAGS_PUSH:{
 			/* Check PUSH */
-			net_tcp_ip_push_handle(request, len);
-			break;
+			u16 datalength;
+			copy_arr((u08*)&tcp_struct, request, len);
+			datalength= swap16(tcp_struct.TotalLength) -20 - (tcp_struct.TCP_Data_Offset >> 2);
+			copy_arr(tcp_struct.MAC_dest, &request[I_ARP_MAC_SOURCE], 6);
+			copy_arr(tcp_struct.MAC_source, &request[I_ARP_MAC_DEST], 6);
+			tcp_struct.TotalLength = swap16(TCP_DATA_SIZE - ETHERNET_II_SIZE);
+			tcp_struct.CheckSum = 0x0000;
+			tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
+			copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
+			copy_arr(tcp_struct.DestIP, &request[I_IPV4_SOURCE_IP], 4);
+			tcp_struct.TCP_Source_Port = swap16((request[I_TCP_DST_PORT_H]<<8) + request[I_TCP_DST_PORT_L]);
+			tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
+			
+			seq_num = swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
+			(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + datalength);
+			ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
+			(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
+			 
+			copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
+			copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
+
+			tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
+			tcp_struct.TCP_Checksums = 0x0000;
+			tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, swap16(tcp_struct.TotalLength) - 20 + 8);
+			enc28j60PacketSend(TCP_DATA_SIZE , (u08*)&tcp_struct);
+			
+			return true;
 		}
-		
 	}
+	return false;
 }
 
 extern void net_tcp_ip_response(u08* request, u16 len, u08* data, u16 len_of_data){
 	/* ACK */
 	u32 seq_num, ack_num = 0;
+	u16 datalength;
+	
 	TCP_Frame tcp_struct;
 	copy_arr((u08*)&tcp_struct, request, len);
+	copy_arr((u08*)&tcp_struct.TCP_Data[0] , data, len_of_data);
+	
+	datalength = swap16(tcp_struct.TotalLength) -20 - (tcp_struct.TCP_Data_Offset >> 2);
+	
 	copy_arr(tcp_struct.MAC_dest, &request[I_ARP_MAC_SOURCE], 6);
 	copy_arr(tcp_struct.MAC_source, &request[I_ARP_MAC_DEST], 6);
-	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE - ETHERNET_II_SIZE);
+	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE + len_of_data - ETHERNET_II_SIZE);
 	tcp_struct.CheckSum = 0x0000;
 	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
 	copy_arr(tcp_struct.SourceIP, &request[I_IPV4_DEST_IP], 4);
@@ -388,56 +396,29 @@ extern void net_tcp_ip_response(u08* request, u16 len, u08* data, u16 len_of_dat
 	tcp_struct.TCP_Dest_Port = swap16((request[I_TCP_SRC_PORT_H]<<8) + request[I_TCP_SRC_PORT_L]);
 	
 	seq_num = swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
-	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + len_of_data);
+	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + datalength);
 	ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
 	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
 	 
 	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
 	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
-
-  tcp_struct.TCP_Flags = TCP_FLAGS_ACK;
-  tcp_struct.TCP_Checksums = 0x0000;
-	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, 52 - 20 +8);
-	enc28j60PacketSend(TCP_DATA_SIZE , (u08*)&tcp_struct);
-	
 	/* PUSH */
-	tcp_struct.TotalLength = swap16(TCP_DATA_SIZE + len_of_data - ETHERNET_II_SIZE);
-	tcp_struct.CheckSum = 0x0000;
-	tcp_struct.CheckSum = ipv4_checksum((u08 *)&tcp_struct.Header_length, IPV4_SIZE);
-	
-	seq_num = swap32((request[I_TCP_SEQ_NUM]<<24) + (request[I_TCP_SEQ_NUM+1]<<16) + \
-	(request[I_TCP_SEQ_NUM+2]<<8) + request[I_TCP_SEQ_NUM+3] + len_of_data);
-	ack_num = swap32((request[I_TCP_ACK_NUM]<<24) + (request[I_TCP_ACK_NUM+1]<<16) + \
-	(request[I_TCP_ACK_NUM+2]<<8) + request[I_TCP_ACK_NUM+3]);
-	
-	copy_arr(tcp_struct.TCP_Seq_Number, (u08*)&ack_num, 4);
-	copy_arr(tcp_struct.TCP_Ack_Number, (u08*)&seq_num, 4);
-	
 	tcp_struct.TCP_Flags = TCP_FLAGS_ACK|TCP_FLAGS_PUSH;
 	tcp_struct.TCP_Checksums = 0x0000;
-	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP, TCP_DATA_SIZE - ETHERNET_II_SIZE + len_of_data - 20 +8);
-	copy_arr(tcp_struct.TCP_Data , data, len_of_data);
+	tcp_struct.TCP_Checksums = tcp_checksum((u08*)tcp_struct.SourceIP,  swap16(tcp_struct.TotalLength) - 20 + 8);
+	
 	enc28j60PacketSend(TCP_DATA_SIZE + len_of_data, (u08*)&tcp_struct);
 }
 
-void net_tcp_ip_push_handle(u08* request, u16 len){
+extern void net_tcp_ip_handle(u08* request, u16 len){
 	u16 len_of_data = len - TCP_DATA_SIZE;
 	if (com_arr(&request[I_TCP_DATA], (u08*)"LED13=HIGH\r\n", len_of_data)){
-		net_tcp_ip_handle(0);
-		net_tcp_ip_response(request, len, (u08*)"LED13=HIGH\r\n", len_of_data);
+		net_tcp_ip_response(request, len, (u08*)"LED13=HIGH ok\r\n", 15);
 	}
 	else if (com_arr(&request[I_TCP_DATA], (u08*)"LED13=LOW\r\n", len_of_data)){
-		net_tcp_ip_handle(1);
-		net_tcp_ip_response(request, len, (u08*)"LED13=LOW\r\n", len_of_data);
+		net_tcp_ip_response(request, len, (u08*)"LED13=LOW ok\r\n", 14);
 	}
 	else{
 		net_tcp_ip_response(request, len, (u08*)"test123", 7);
 	}
 }
-
-__weak extern void net_tcp_ip_handle(u08 num){
-}
-
-
-
-

@@ -244,9 +244,9 @@ typedef struct{
 }TCP_Frame;
 
 extern bool net_tcp_ip_check(u08* request, u16 len);
-extern void net_tcp_ip_reply(u08* request, u16 len);
+extern bool net_tcp_ip_reply(u08* request, u16 len);
 
 extern void net_tcp_ip_push_handle(u08* request, u16 len);
-__weak extern void net_tcp_ip_handle(u08 num);
+extern void net_tcp_ip_handle(u08* request, u16 len);
 
 #endif
