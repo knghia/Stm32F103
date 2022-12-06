@@ -58,28 +58,6 @@ extern u16 icmp_checksum(u08 *data, u16 len){
 	return base_checksum(data, len);
 }
 
-/* 
-element of udp data
-0xc0ff, 0xff32, // c0 ff ff 32 => Source IP Address : 192.255.255.50
-0xc0ff, 0xff33, // c0 ff ff 33 => Destination IP Address : 192.255.255.51
-0x0011,         // Zero(0x00), Protocol(0x11)
-0x000c,         // UDP Length
-// UDP Header
-0xa45c,         // a4 5c => Source Port : 0xa45c = 42076
-0x270f,         // 27 0f => Destination Port : 0x270f = 9999
-0x000c,         // UDP Length
-0x7465, 0x7374  // 74 65 73 74 => "test"
-
-UDP Length : duoc cong 2 lan
-0x0011 : Protocol(0x11) la thanh phan ben ngoai
-
-len: tinh tu source IP
--> len of udp : len - 8
-0x11  : Protocol(0x11) la thanh phan ben ngoai
-u32 cs = 0x11 + len - 8;
-
-*/
-
 extern u16 udp_checksum(u08 *data, u16 len){
 	u32 cs = 0x11 + len - 8;
 	while(len>1){
