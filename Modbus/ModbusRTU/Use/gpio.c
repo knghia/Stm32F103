@@ -6,14 +6,17 @@
 /*
  * MODBUS
  */
-#define REG_INPUT_NREGS 5
+#define REG_INPUT_NREGS 6
 #define REG_INPUT_START 1000
 uint16_t usRegInputBuf[REG_INPUT_NREGS] = {0};
 
-#define REG_HOLDING_NREGS 4
+#define REG_HOLDING_NREGS 6
 #define REG_HOLDING_START 2000
 uint16_t usRegHoldingBuf[REG_HOLDING_NREGS] = {7,100,255,255};
 
+#define REG_COIL_NREGS 6
+#define REG_COIL_START 0
+uint16_t usRegCoilBuf[REG_COIL_NREGS] = {0};
 
 extern void setup(void){
 	mbrtu_init();
@@ -25,6 +28,22 @@ extern void loop(void){
 	usRegInputBuf[1] = usRegHoldingBuf[1];
 	usRegInputBuf[2] = usRegHoldingBuf[1];
 	usRegInputBuf[3] = usRegHoldingBuf[3];
+}
+
+extern MBRTU_Error mbrtu_force_coil_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len){
+	if((begin_add >= REG_INPUT_START)
+        && ((begin_add + len)<=(REG_INPUT_NREGS+REG_INPUT_START))){
+		if
+		uint16_t i = begin_add-REG_INPUT_START;
+        while(len>0){
+            *data_frame++ = (uint8_t)(usRegCoilBuf[i]>>8);
+            *data_frame++ = (uint8_t)(usRegCoilBuf[i]%256);
+            i++;
+            len--;
+        }
+		return MB_NONE;
+	}
+	return MB_ADD_ERROR;
 }
 
 extern MBRTU_Error mbrtu_input_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len){

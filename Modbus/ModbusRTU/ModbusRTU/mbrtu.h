@@ -27,7 +27,9 @@ typedef enum{
 #define MBRTU_ID 				68
 
 #define MBRTU_FUNC_04		0x04
+#define MBRTU_FUNC_05		0x05
 #define MBRTU_FUNC_06		0x06
+#define MBRTU_FUNC_15		0x0F
 #define MBRTU_FUNC_16		0x10
 
 extern MBRTU_Error mbrtu_poll(void);
@@ -41,19 +43,20 @@ extern void mbrtu_tim_call_back(void);
 void mbrtu_usart_init(void);
 
 void mbrtu_rx_enable(void);
-uint8_t mbrtu_rx_read(void);
+u08 mbrtu_rx_read(void);
 extern void mbrtu_rx_call_back(void);
 
 void mbrtu_tx_enable(void);
-void mbrtu_tx_data(uint8_t len);
+void mbrtu_tx_data(u08 len);
 extern void mbrtu_tx_call_back(void);
 
 void mbrtu_response_error(MBRTU_Error e);
-void mbrtu_response(uint8_t func, uint16_t add, uint16_t len, uint8_t* data);
-void mbrtu_execute(uint8_t* data_frame, uint16_t len);
+void mbrtu_response(u08 func, u16 add, u16 len, u08* data);
+void mbrtu_execute(u08* data_frame, u16 len);
 
-extern MBRTU_Error mbrtu_input_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len);
-extern MBRTU_Error mbrtu_holding_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len);
+__weak MBRTU_Error mbrtu_force_coil_cb(u08* data_frame, u16 begin_add, u16 len_of_coil, u16 len_of_data);
+__weak MBRTU_Error mbrtu_input_register_cb(u08* data_frame, u16 begin_add, u16 len);
+__weak MBRTU_Error mbrtu_holding_register_cb(u08* data_frame, u16 begin_add, u16 len);
 
 #define MBRTU_MES_ID_ERROR 		"ID ERROR\r\n"					//8+2
 #define MBRTU_MES_FUNC_ERROR 	"OVERANGE FUNCTION\r\n"	//17+2

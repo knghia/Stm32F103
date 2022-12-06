@@ -6,13 +6,17 @@
 /*
  * MODBUS
  */
-#define REG_INPUT_NREGS 5
+#define REG_INPUT_NREGS 6
 #define REG_INPUT_START 1000
-uint16_t usRegInputBuf[REG_INPUT_NREGS] = {0};
+u16 usRegInputBuf[REG_INPUT_NREGS] = {0};
 
-#define REG_HOLDING_NREGS 4
+#define REG_HOLDING_NREGS 6
 #define REG_HOLDING_START 2000
-uint16_t usRegHoldingBuf[REG_HOLDING_NREGS] = {7,100,255,255};
+u16 usRegHoldingBuf[REG_HOLDING_NREGS] = {7,100,255,255};
+
+#define REG_COIL_NREGS 6
+#define REG_COIL_START 2000
+u16 usRegCoilBuf[REG_COIL_NREGS] = {0};
 
 
 extern void setup(void){
@@ -27,14 +31,27 @@ extern void loop(void){
 	usRegInputBuf[3] = usRegHoldingBuf[3];
 }
 
-extern MBRTU_Error mbrtu_input_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len){
+MBRTU_Error mbrtu_force_coil_cb(u08* data_frame, u16 begin_add, u16 len){
+	if((begin_add >= REG_INPUT_START)
+        && ((begin_add + len)<=(REG_INPUT_NREGS+REG_INPUT_START))){
+		u16 i = begin_add-REG_INPUT_START;
+		if (len == 1){
+			usRegCoilBuf[i] = (u16)(*data_frame++ << 8);
+			usRegCoilBuf[i] += (u16)(*data_frame++);
+		}
+		return MB_NONE;
+	}
+	return MB_ADD_ERROR;
+}
+
+MBRTU_Error mbrtu_input_register_cb(u08* data_frame, u16 begin_add, u16 len){
 	if((begin_add >= REG_INPUT_START)
         && ((begin_add + len)<=(REG_INPUT_NREGS+REG_INPUT_START))){
 
-		uint16_t i = begin_add-REG_INPUT_START;
+		u16 i = begin_add-REG_INPUT_START;
         while(len>0){
-            *data_frame++ = (uint8_t)(usRegInputBuf[i]>>8);
-            *data_frame++ = (uint8_t)(usRegInputBuf[i]%256);
+            *data_frame++ = (u08)(usRegInputBuf[i]>>8);
+            *data_frame++ = (u08)(usRegInputBuf[i]%256);
             i++;
             len--;
         }
@@ -43,14 +60,14 @@ extern MBRTU_Error mbrtu_input_register_cb(uint8_t* data_frame, uint16_t begin_a
 	return MB_ADD_ERROR;
 }
 
-extern MBRTU_Error mbrtu_holding_register_cb(uint8_t* data_frame, uint16_t begin_add, uint16_t len){
+MBRTU_Error mbrtu_holding_register_cb(u08* data_frame, u16 begin_add, u16 len){
 	if((begin_add >= REG_HOLDING_START)
         && ((begin_add + len)<=(REG_HOLDING_START + REG_HOLDING_NREGS)))
 	{
-		uint16_t i = begin_add-REG_HOLDING_START;
+		u16 i = begin_add-REG_HOLDING_START;
         while(len>0){
-            usRegHoldingBuf[i] = (uint16_t)(*data_frame++ << 8);
-            usRegHoldingBuf[i] += (uint16_t)(*data_frame++);
+            usRegHoldingBuf[i] = (u16)(*data_frame++ << 8);
+            usRegHoldingBuf[i] += (u16)(*data_frame++);
             i++;
             len--;
         }
