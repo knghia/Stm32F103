@@ -2,7 +2,13 @@
 #include "use.h"
 
 extern void setup(void){
-	W5500_Init();
+	int ret;
+	ret = W5500_Init();
+	if (ret != 0) {
+		printf("w5500 init fail, ret is %d\r\n", ret);
+	} else {
+		printf("w5500 init success\r\n");
+	}
 }
 
 extern void loop(void){

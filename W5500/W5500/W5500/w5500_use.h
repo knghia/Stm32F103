@@ -1,19 +1,18 @@
-#ifndef W5500_SPI_H
-#define W5500_SPI_H
+
+#ifndef W5500_USE_H
+#define W5500_USE_H
 #include "main.h"
 
-void W5500_CSL(void);
-void W5500_CSH(void);
+void w5500_cs_select(void);
+void w5500_cs_deselect(void);
+void w5500_spi_writebyte(uint8_t data);
+u08 w5500_spi_readbyte(void);
+void w5500_spi_writeburst(u08* pBuf, u16 len);
+void w5500_spi_readburst(u08* pBuf, u16 len);
 
-void W5500_RST_L(void);
-void W5500_RST_H(void);
-
-void W5500_SPI_Write(uint8_t data);
-u08 W5500_SPI_Read(void);
-
-void W5500_SPI_Write_Buff(u08* pBuf, u16 len);
-void W5500_SPI_Read_Buff(u08* pBuf, u16 len);
-
-void W5500_Init(void);
+void w5500_phy_init(void);
+void w5500_network_info_init(void);
+void w5500_network_info_show(void);
+int W5500_Init(void);
 
 #endif
