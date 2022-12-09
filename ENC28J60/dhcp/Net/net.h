@@ -12,16 +12,16 @@
 #define IPV4_ETHERNET_TYPE_L 			0x00
 
 #define IPV4_HEADER_LENGTH				0x45
-#define IPV4_SERVICES						0x00
+#define IPV4_SERVICES							0x00
 #define IPV4_IDENTIFICATION				0x0810
-#define IPV4_FLAG								0x0000
-#define IPV4_TIME_TO_LIVE				128
+#define IPV4_FLAG									0x0000
+#define IPV4_TIME_TO_LIVE					128
 #define IPV4_PROTOCOL_ICMP				0x01	// 1
-#define IPV4_PROTOCOL_UDP				0x11	// 17
-#define IPV4_PROTOCOL_TCP				0x06	// 6
+#define IPV4_PROTOCOL_UDP					0x11	// 17
+#define IPV4_PROTOCOL_TCP					0x06	// 6
 
 #define ETHERNET_II_SIZE				14
-#define IPV4_SIZE						20
+#define IPV4_SIZE							20
 
 #define I_IPV4_MAC_SOURCE				0
 #define I_IPV4_MAC_DEST					6
@@ -106,7 +106,6 @@ extern void net_arp_reply(void);
 extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeout);
 
 /* ICMP */
-
 #define ICMP_REPLY						0x00
 #define ICMP_REQUEST					0x08
 #define ICMP_CODE							0x00
@@ -157,6 +156,49 @@ typedef struct{
 extern void net_icmp_reply(u08* ping, u16 len);
 extern bool net_icmp_check(u08* ping, u16 len);
 extern void net_icmp_request(u08* data, u16 len);
+
+/* UDP */
+#define I_UDP_SRC_PORT_H 		34 // 0x22
+#define I_UDP_SRC_PORT_L 		35 // 0x22
+
+#define I_UDP_DST_PORT_H 		36 // 0x24
+#define I_UDP_DST_PORT_L 		37 // 0x24
+
+#define I_UDP_LEN_H 			38 // 0x26
+#define I_UDP_LEN_L 			39 // 0x26
+
+#define I_UDP_CHECKSUM_H 		40 // 0x28
+#define I_UDP_CHECKSUM_L 		41 // 0x28
+
+#define I_UDP_DATA 				42 // 0x2A
+#define UDP_SIZE					8
+
+typedef struct{
+	/* It is Ethernet Frame II */
+	u08 MAC_dest[6];
+	u08 MAC_source[6];
+	u16 Ethernet_type;
+	/* IP */
+	u08 Header_length; 
+	u08 Services;
+	/* Total length
+		Form: Header_length - Data
+	*/
+	u16 TotalLength;
+	u16 Identification;
+	u16 Flag;
+	u08 TimeToLive;
+	u08 Protocol;
+	u16 CheckSum;
+	u08 SourceIP[4];
+	u08 DestIP[4];
+	/* UDP */
+  u16 UDP_Source_Port;
+  u16 UDP_Dest_Port;
+  u16 UDP_Length;
+  u16 UDP_Checksum;
+  u08 UDP_Data[512];
+}UDP_Frame;
 
 /* TCP */
 #define I_TCP_SRC_PORT_H 			34
@@ -250,47 +292,24 @@ extern void net_tcp_ip_push_handle(u08* request, u16 len);
 extern void net_tcp_ip_handle(u08* request, u16 len);
 
 typedef struct{
-  /* It is Ethernet Frame II */
-  u08 MAC_dest[6];
-  u08 MAC_source[6];
-  u16 Ethernet_type;
-  /* IP */
-  u08 Header_length; 
-  u08 Services;
-  /* Total length
-  Form: Header_length - Data
-	*/
-  u16 TotalLength;
-  u16 Identification;
-  u16 Flag;
-  u08 TimeToLive;
-  u08 Protocol;
-  u16 CheckSum;
-  u08 SourceIP[4];
-  u08 DestIP[4];
-  /* DHCP */
-  u08 Opeartion;
-  u08 HardwareType;
-  u08 HardwareLength;
-  u08 Hops;
-  u32 TransactionID;
-  u16 Seconds;
-  u16 Unused;
+	u08 op;            	///< @ref DHCP_BOOTREQUEST or @ref DHCP_BOOTREPLY
+	u08 htype;         	///< @ref DHCP_HTYPE10MB or @ref DHCP_HTYPE100MB
+	u08 hlen;          	///< @ref DHCP_HLENETHERNET
+	u08 hops;          	///< @ref DHCP_HOPS
+	u08 xid[4];         ///< @ref DHCP_XID  This increase one every DHCP transaction.
+	u16 secs;          	///< @ref DHCP_SECS
+	u16 flags;         	///< @ref DHCP_FLAGSBROADCAST or @ref DHCP_FLAGSUNICAST
+	u08 ciaddr[4];     	///< @ref Request IP to DHCP sever
+	u08 yiaddr[4];     	///< @ref Offered IP from DHCP server
+	u08 siaddr[4];     	///< No use 
+	u08 giaddr[4];     	///< No use
+	u08 chaddr[16];    	///< DHCP client 6bytes MAC address. Others is filled to zero
+	u08 sname[64];     	///< No use
+	u08 file[128];     	///< No use
+	u08 OPT[312]; 			///< Option
+}DHCP_Frame;
 
-  u32 ClinetIPAdd;
-  u32 YourIPAdd;
-  u32 ServerIPAdd;
-  u32 GatewayIPAdd;
-
-  u08 ClinetHarwareAdd[16];
-  u08 ServerHostName[64];
-  u08 BootFileName[128];
-  u08 VendorSpecificAre[312];
-}DHCP_Frane;
-
-extern bool net_dhcp_check(u08* request, u16 len);
-extern bool net_dhcp_reply(u08* request, u16 len);
-extern void net_dhcp_push_handle(u08* request, u16 len);
-extern void net_dhcp_handle(u08* request, u16 len);
+extern void net_dhcp_discover(void);
+extern void net_dhcp_udp_send(u08* data, u16 len_of_data);
 
 #endif

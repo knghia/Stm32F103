@@ -3,8 +3,8 @@
 #define SUP_H
 #include "main.h"
 
-extern u08 copy_arr(u08* dest, u08* source, u08 len);
-extern bool com_arr(u08* a,const u08* b, u08 len);
+extern u08 copy_arr(u08* dest, u08* source, u16 len);
+extern bool com_arr(u08* a,const u08* b, u16 len);
 extern u16 swap16(uint16_t data);
 extern u32 swap32(u32 data);
 

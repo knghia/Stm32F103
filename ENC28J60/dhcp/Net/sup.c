@@ -1,16 +1,15 @@
 #include "main.h"
 #include "sup.h"
 
-extern u08 copy_arr(u08* dest, u08* source, u08 len){
-    for(u08 i=0; i<len; i++){
+extern u08 copy_arr(u08* dest, u08* source, u16 len){
+    for(u16 i=0; i<len; i++){
         dest[i] = source[i];
     }
     return len;
 }
 
-extern bool com_arr(u08* a,const u08* b, u08 len){
-	u08 i = 0;
-	for (i=0;i<len;i++){
+extern bool com_arr(u08* a,const u08* b, u16 len){
+	for (u16 i=0;i<len;i++){
 		if(a[i] != b[i]){
 			return false;
 		}

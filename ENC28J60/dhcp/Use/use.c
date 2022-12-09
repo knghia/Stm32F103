@@ -27,5 +27,6 @@ extern void setup(void){
 
 extern void loop(void){
 	net_poll();
-	delay_ms(100);
+	net_dhcp_discover();
+	delay_ms(2000);
 }

@@ -428,7 +428,97 @@ extern void net_tcp_ip_handle(u08* request, u16 len){
 		}
 	}
 }
+
+
+extern void net_dhcp_discover(void){
+	u16 k = 0;
+	u16 len = 0;
+	u16 len_of_data = 0;
+	DHCP_Frame dhcp_struct;
 	
+	UDP_Frame udp_struct;
+	u08 dhcp_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+	u08 dhcp_ip_dest[4] = {0, 0, 0, 0};
+	u08 dhcp_ip_source[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+	
+	dhcp_struct.op = 0x01;
+	dhcp_struct.htype = 0x01;
+	dhcp_struct.hlen = 0x06;
+	dhcp_struct.hops = 0x01;
+	len+=4;
+	dhcp_struct.xid[0] = 0x02;
+	dhcp_struct.xid[1] = 0x03;
+	dhcp_struct.xid[2] = 0x05;
+	dhcp_struct.xid[3] = 0x07;
+	dhcp_struct.secs = 0;
+	dhcp_struct.flags = 0;
+	len+=8;
+	dhcp_struct.ciaddr[0] = 0x08;
+	dhcp_struct.ciaddr[1] = 0x10;
+	dhcp_struct.ciaddr[2] = 0x19;
+	dhcp_struct.ciaddr[3] = 0x97;
+	len+=4;
+	copy_arr(dhcp_struct.yiaddr, dhcp_ip_dest, 4); len+=4;
+	copy_arr(dhcp_struct.siaddr, dhcp_ip_dest, 4); len+=4;
+	copy_arr(dhcp_struct.giaddr, dhcp_ip_dest, 4); len+=4;
+	copy_arr(dhcp_struct.chaddr, mac_addr, 6); len+=6;
+	for (u08 i=6;i<16;i++)dhcp_struct.chaddr[i]=0;
+	len+=10;
+	for (u08 i=0;i<64;i++)dhcp_struct.sname[i]=0;
+	len+=64;
+	for (u08 i=0;i<128;i++)dhcp_struct.file[i]=0;
+	len+=128;
+	// magic cookie dhcp
+	dhcp_struct.OPT[k++] = 0x63;
+	dhcp_struct.OPT[k++] = 0x82;
+	dhcp_struct.OPT[k++] = 0x53;
+	dhcp_struct.OPT[k++] = 0x63;
+	// Option DHCP Message Type
+	dhcp_struct.OPT[k++] = 0x35;
+	dhcp_struct.OPT[k++] = 0x01;
+	dhcp_struct.OPT[k++] = 0x01;
+	// Option Client identifier 
+	dhcp_struct.OPT[k++] = 0x3D;
+	dhcp_struct.OPT[k++] = 0x07;
+	dhcp_struct.OPT[k++] = 0x01;
+	copy_arr((u08*)&dhcp_struct.OPT[k], mac_addr, 6);k+=6;
+	// Option Host name
+	dhcp_struct.OPT[k++] = 0x0c;
+	dhcp_struct.OPT[k++] = 0x05;
+	copy_arr((u08*)&dhcp_struct.OPT[k], (u08*)"nghia", 5);k+=5;
+	// Option Parameter request list
+	dhcp_struct.OPT[k++] = 0x37;
+	dhcp_struct.OPT[k++] = 0x03;
+	dhcp_struct.OPT[k++] = 0x01;
+	dhcp_struct.OPT[k++] = 0x03;
+	dhcp_struct.OPT[k++] = 0x06;
+	// Option End
+	dhcp_struct.OPT[k++] = 0xFF;
+
+	len_of_data = len + k;
+	copy_arr(udp_struct.MAC_dest, dhcp_mac, 6);
+	copy_arr(udp_struct.MAC_source, mac_addr, 6);
+	udp_struct.Ethernet_type = swap16(0x0800);
+	udp_struct.Header_length = 0x45;
+	udp_struct.Services = 0x00;
+	udp_struct.TotalLength = swap16(len_of_data+8+20);
+	udp_struct.Identification = 0x0810;
+	udp_struct.Flag = 0x0000;
+	udp_struct.TimeToLive = 0x80;
+	udp_struct.Protocol = 0x11;
+	udp_struct.CheckSum = 0x0000;
+	udp_struct.CheckSum = ipv4_checksum((u08 *)&udp_struct.Header_length, IPV4_SIZE);
+	copy_arr(udp_struct.SourceIP, dhcp_ip_dest, 4);
+	copy_arr(udp_struct.DestIP, dhcp_ip_source, 4);
+	udp_struct.UDP_Source_Port = swap16(source_port);
+	udp_struct.UDP_Dest_Port = swap16(68);
+	udp_struct.UDP_Length = swap16(UDP_SIZE + len_of_data);
+	copy_arr((u08*)&udp_struct.UDP_Data[0], (u08*)&dhcp_struct, len_of_data);
+	/* check sum */
+	udp_struct.UDP_Checksum = 0x0000;
+	udp_struct.UDP_Checksum = udp_checksum((u08*)udp_struct.SourceIP, UDP_SIZE + len_of_data + 8);
+	enc28j60PacketSend(I_UDP_DATA + len_of_data, (u08*)&udp_struct);	
+}
 
 
 
