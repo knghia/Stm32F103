@@ -12,7 +12,9 @@ extern void setup_io(void){
 #define LED_TOGGLE() 	{GPIOC->ODR ^= (1<<13);}
 
 void enc28j60IntCallBack(void){
-	printf("interrupt \r\n");
+	if(net_check_enit()){
+		net_poll();
+	}
 }
 
 u08 _mymac[6] = {0x08,0x10,0x19,0x97,0x25,0x25};
@@ -26,6 +28,5 @@ extern void setup(void){
 }
 
 extern void loop(void){
-	net_poll();
 	delay_ms(100);
 }

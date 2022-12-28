@@ -210,18 +210,14 @@ bool enc28j60Init(u08* macaddr)
 	enc28j60Write(MAADR1, macaddr[4]);
 	enc28j60Write(MAADR0, macaddr[5]);
 
-	enc28j60PhyWrite(PHCON1, PHCON1_PDPXMD);
-
-
+	enc28j60PhyWrite(PHCON1, PHCON1_PDPXMD);	
+	
 	// no loopback of transmitted frames
 	enc28j60PhyWrite(PHCON2, PHCON2_HDLDIS);
 	// switch to bank 0
 	enc28j60SetBank(ECON1);
-	// enable interrutps
-	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
 	// enable packet reception
 	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, ECON1_RXEN);
-	
 	return true;
 	}
 

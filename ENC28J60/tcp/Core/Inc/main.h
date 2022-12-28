@@ -75,6 +75,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define ENC_INT_Pin GPIO_PIN_2
 #define ENC_INT_GPIO_Port GPIOA
+#define ENC_INT_EXTI_IRQn EXTI2_IRQn
 #define RST_Pin GPIO_PIN_3
 #define RST_GPIO_Port GPIOA
 #define SPI1_SS_Pin GPIO_PIN_4

@@ -24,7 +24,10 @@ extern void net_init(u08 mymac[6], u08 myip[4], u16 myport, u08 ip_of_pc[4]){
 	copy_arr(mac_addr, mymac, 6);
 	copy_arr(ip_addr, myip, 4);
 	copy_arr(ip_pc, ip_of_pc, 4);
-	net_arp_get_mac_ip_pc(mac_pc, ip_pc, 1000);
+	net_arp_get_mac_ip_pc(mac_pc, ip_pc, 100);
+	
+	// enable interrutps
+	enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, EIE, EIE_INTIE|EIE_PKTIE);
 }
 
 extern bool net_poll(void){
@@ -50,7 +53,6 @@ extern bool net_poll(void){
 		else if(rx_buf[I_IPV4_PROTOCOL] == IPV4_PROTOCOL_TCP){
 			protocol = TCP_IP;
 		}
-		
 		switch (protocol){
 			case ARP:{
 				if (net_arp_check_broadcast((u08*)rx_buf, plen)){
@@ -154,7 +156,7 @@ extern bool net_arp_get_mac_ip_pc(u08 mac_target[6], u08 ip_target[4], u16 timeo
 
 	while(timeout--){
 		enc28j60PacketSend(ARP_PACKET_LEN, (u08 *)&arp_struct);
-		delay_ms(500);
+		delay_ms(200);
 		len = enc28j60PacketReceive(BUFFER_SIZE, data); 
 		if (len >= 42){
 			/* ARP OPCODE request */
