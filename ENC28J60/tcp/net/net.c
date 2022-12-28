@@ -422,3 +422,11 @@ extern void net_tcp_ip_handle(u08* request, u16 len){
 		net_tcp_ip_response(request, len, (u08*)"test123", 7);
 	}
 }
+
+extern bool net_check_enit(void){
+	if(enc28j60Read(EIR)&EIR_PKTIF){
+		enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR ,EIR, EIR_PKTIF);
+		return true;
+	}
+	return false;
+}

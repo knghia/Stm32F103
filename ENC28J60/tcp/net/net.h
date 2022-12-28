@@ -51,6 +51,7 @@ typedef enum{
 
 extern bool net_poll(void);
 extern void net_init(u08 mymac[6], u08 myip[4], u16 myport, u08 ip_of_pc[4]);
+extern bool net_check_enit(void);
 
 /* ARP */
 
